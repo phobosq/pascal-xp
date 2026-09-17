@@ -13,4 +13,4 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r requirements.txt
-      - run: python -m py_compile scripts/prepare_corpus.py scripts/scan_pe.py
+      - run: python -m py_compile scripts/prepare_corpus.py scripts/scan_pe.py scripts/scan_pascal_firmware.py
