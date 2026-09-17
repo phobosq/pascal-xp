@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "artifacts": [
+    {
+      "id": "nvidia-368.81-xp-x64",
+      "role": "recipient",
+      "os": "Windows XP Professional x64 SP2",
+      "driver_version": "368.81",
+      "files": [
+        {"path": "nv4_mini.sys", "sha256": null},
+        {"path": "nv4_disp.dll", "sha256": null}
+      ]
+    },
+    {
+      "id": "nvidia-368.81-win7-x64",
+      "role": "donor",
+      "os": "Windows 7 x64",
+      "driver_version": "368.81",
+      "files": [
+        {"path": "nvlddmkm.sys", "sha256": null}
+      ]
+    }
+  ]
+}
