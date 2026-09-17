@@ -17,19 +17,30 @@ on:
         default: '569106473'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   analyze:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
-      GH_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ secrets.CORPUS_TOKEN }}
       RELEASE_ID: ${{ inputs.release_id }}
       XP_ASSET_ID: ${{ inputs.xp_asset_id }}
       WIN7_ASSET_ID: ${{ inputs.win7_asset_id }}
 
     steps:
+      - name: Verify corpus token is configured
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${GH_TOKEN:-}" ]]; then
+            echo "Missing repository secret CORPUS_TOKEN." >&2
+            echo "Create a GitHub PAT with access to phobosq/pascal-xp and add it under Settings -> Secrets and variables -> Actions -> Repository secrets." >&2
+            exit 1
+          fi
+          echo "CORPUS_TOKEN is configured."
+
       - name: Checkout analysis code
         uses: actions/checkout@v4
 
