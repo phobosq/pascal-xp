@@ -12,6 +12,7 @@ import json
 CHIPSET_VALUES = set([0x120, 0x124, 0x126, 0x12f, 0x130, 0x132, 0x134, 0x136, 0x137, 0x138])
 PCI_VALUES = set([0x1c03])  # common GTX 1060 6GB device ID
 TARGET_VALUES = CHIPSET_VALUES | PCI_VALUES
+PASCAL_FAMILY_VALUES = set([0x130, 0x132, 0x134, 0x136, 0x137, 0x138])
 MAX_DECOMP_CHARS = 50000
 
 
@@ -127,6 +128,124 @@ def callers(fn):
     return out
 
 
+def instruction_context(a, radius=4):
+    listing = currentProgram.getListing()
+    center = listing.getInstructionContaining(a)
+    if center is None:
+        center = listing.getInstructionAt(a)
+    if center is None:
+        return []
+    before = []
+    cur = center
+    for _ in range(radius):
+        cur = listing.getInstructionBefore(cur.getAddress())
+        if cur is None:
+            break
+        before.append(cur)
+    before.reverse()
+    items = before + [center]
+    cur = center
+    for _ in range(radius):
+        cur = listing.getInstructionAfter(cur.getAddress())
+        if cur is None:
+            break
+        items.append(cur)
+    return [{
+        "address": addr(insn.getAddress()),
+        "text": str(insn),
+        "is_reference_source": insn.getAddress() == center.getAddress(),
+    } for insn in items]
+
+
+def reference_record(r):
+    source = r.getFromAddress()
+    owner = containing_function(source)
+    return {
+        "from": addr(source),
+        "to": addr(r.getToAddress()),
+        "type": str(r.getReferenceType()),
+        "source": str(r.getSource()),
+        "is_primary": bool(r.isPrimary()),
+        "owner_entry": addr(owner.getEntryPoint()) if owner else None,
+        "owner_name": owner.getName() if owner else None,
+    }
+
+
+def refs_to(a, limit=256):
+    out = []
+    for r in getReferencesTo(a):
+        if len(out) >= limit:
+            break
+        try:
+            out.append(reference_record(r))
+        except:
+            pass
+    return out
+
+
+def data_context(a):
+    data = currentProgram.getListing().getDataContaining(a)
+    if data is None:
+        return None
+    try:
+        value = str(data.getValue())
+    except:
+        value = None
+    return {
+        "min_address": addr(data.getMinAddress()),
+        "max_address": addr(data.getMaxAddress()),
+        "length": data.getLength(),
+        "data_type": str(data.getDataType()),
+        "representation": data.getDefaultValueRepresentation(),
+        "value": value,
+    }
+
+
+def indirect_incoming_refs(fn):
+    """Export non-call xrefs and one extra xref hop through data/vtable slots."""
+    out = []
+    seen = set()
+    for r in getReferencesTo(fn.getEntryPoint()):
+        try:
+            source = r.getFromAddress()
+            key = (addr(source), str(r.getReferenceType()))
+            if key in seen:
+                continue
+            seen.add(key)
+            data = data_context(source)
+            anchors = [source]
+            if data is not None:
+                data_start = currentProgram.getAddressFactory().getAddress(data["min_address"])
+                if data_start is not None and data_start != source:
+                    anchors.append(data_start)
+            second_hop = []
+            second_seen = set()
+            for anchor in anchors:
+                for item in refs_to(anchor):
+                    k = (item["from"], item["to"], item["type"])
+                    if k not in second_seen:
+                        second_seen.add(k)
+                        second_hop.append(item)
+            item = reference_record(r)
+            item["instruction_context"] = instruction_context(source)
+            item["data"] = data
+            item["refs_to_slot_or_data_start"] = second_hop
+            out.append(item)
+        except Exception as e:
+            out.append({"error": str(e)})
+    return out
+
+
+def is_pascal_family_mapper(rec):
+    values = set()
+    for hit in rec["hits"]:
+        if hit["mnemonic"] not in ("MOV", "MOVZX", "MOVSX"):
+            continue
+        for item in hit["values"]:
+            values.add(item["value"])
+    return PASCAL_FAMILY_VALUES.issubset(values)
+
+
 def decompile(di, fn):
     try:
         result = di.decompileFunction(fn, 90, monitor)
@@ -153,7 +272,7 @@ def main():
     try:
         for key in sorted(hits.keys()):
             fn = hits[key]["function"]
-            records.append({
+            record = {
                 "entry": key,
                 "name": fn.getName(),
                 "size": fn.getBody().getNumAddresses(),
@@ -161,12 +280,17 @@ def main():
                 "callers": callers(fn),
                 "calls": calls(fn),
                 "decompilation": decompile(di, fn),
-            })
+            }
+            record["is_pascal_family_mapper"] = is_pascal_family_mapper(record)
+            record["indirect_incoming_refs"] = (
+                indirect_incoming_refs(fn) if record["is_pascal_family_mapper"] else []
+            )
+            records.append(record)
     finally:
         di.dispose()
 
     obj = {
-        "schema_version": 2,
+        "schema_version": 3,
         "program": currentProgram.getName(),
         "chipset_values": ["0x%x" % v for v in sorted(CHIPSET_VALUES)],
         "pci_values": ["0x%x" % v for v in sorted(PCI_VALUES)],
