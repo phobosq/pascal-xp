@@ -4,6 +4,7 @@
 from java.io import FileWriter
 from ghidra.app.decompiler import DecompInterface
 from ghidra.program.model.scalar import Scalar
+from jpype import JArray, JByte
 import json
 
 # Nouveau/NVIDIA-style chipset identifiers commonly encountered in RM code:
@@ -236,6 +237,75 @@ def indirect_incoming_refs(fn):
     return out
 
 
+def java_le_bytes(value, width):
+    vals = []
+    for shift in range(0, width * 8, 8):
+        b = (value >> shift) & 0xff
+        vals.append(b if b < 0x80 else b - 0x100)
+    return JArray(JByte)(vals)
+
+
+def qword_neighborhood(a, radius=8):
+    memory = currentProgram.getMemory()
+    space = currentProgram.getAddressFactory().getDefaultAddressSpace()
+    out = []
+    base = a.subtract(a.getOffset() % 8)
+    for index in range(-radius, radius + 1):
+        p = base.add(index * 8)
+        try:
+            raw = memory.getLong(p) & 0xffffffffffffffff
+            target_address = space.getAddress(raw)
+            target = getFunctionAt(target_address) if target_address is not None else None
+            out.append({
+                "address": addr(p),
+                "relative_to_hit": p.subtract(a),
+                "value": "0x%016x" % raw,
+                "target_entry": addr(target.getEntryPoint()) if target else None,
+                "target_name": target.getName() if target else None,
+                "refs_to_address": refs_to(p, 64),
+            })
+        except:
+            pass
+    return out
+
+
+def raw_pointer_occurrences(fn):
+    """Find untyped absolute function pointers which Ghidra did not promote to refs."""
+    memory = currentProgram.getMemory()
+    value = fn.getEntryPoint().getOffset()
+    patterns = [(8, java_le_bytes(value, 8)), (4, java_le_bytes(value, 4))]
+    out = []
+    seen = set()
+    for block in memory.getBlocks():
+        if not block.isInitialized() or block.isExecute():
+            continue
+        for width, pattern in patterns:
+            cursor = block.getStart()
+            while cursor is not None and cursor.compareTo(block.getEnd()) <= 0:
+                try:
+                    hit = memory.findBytes(cursor, block.getEnd(), pattern, None, True, monitor)
+                except:
+                    hit = None
+                if hit is None:
+                    break
+                key = (addr(hit), width)
+                if key not in seen:
+                    seen.add(key)
+                    out.append({
+                        "address": addr(hit),
+                        "width": width,
+                        "block": block.getName(),
+                        "refs_to_pointer": refs_to(hit, 256),
+                        "data": data_context(hit),
+                        "qword_neighborhood": qword_neighborhood(hit),
+                    })
+                try:
+                    cursor = hit.add(1)
+                except:
+                    break
+    return out
+
+
 def is_pascal_family_mapper(rec):
     values = set()
     for hit in rec["hits"]:
@@ -285,12 +355,15 @@ def main():
             record["indirect_incoming_refs"] = (
                 indirect_incoming_refs(fn) if record["is_pascal_family_mapper"] else []
             )
+            record["raw_pointer_occurrences"] = (
+                raw_pointer_occurrences(fn) if record["is_pascal_family_mapper"] else []
+            )
             records.append(record)
     finally:
         di.dispose()
 
     obj = {
-        "schema_version": 3,
+        "schema_version": 4,
         "program": currentProgram.getName(),
         "chipset_values": ["0x%x" % v for v in sorted(CHIPSET_VALUES)],
         "pci_values": ["0x%x" % v for v in sorted(PCI_VALUES)],
