@@ -4,17 +4,17 @@ on:
   workflow_dispatch:
     inputs:
       release_id:
-        description: Optional draft release ID. Leave blank to use the newest draft containing both assets.
-        required: false
-        default: ''
-      xp_asset:
-        description: XP x64 driver asset filename
+        description: Draft release ID containing the corpus assets
         required: true
-        default: nv4_mini.sys
-      win7_asset:
-        description: Windows 7 x64 driver asset filename
+        default: '390358348'
+      xp_asset_id:
+        description: Release asset ID for nv4_mini.sys
         required: true
-        default: nvlddmkm.sys
+        default: '569106389'
+      win7_asset_id:
+        description: Release asset ID for nvlddmkm.sys
+        required: true
+        default: '569106473'
 
 permissions:
   contents: read
@@ -25,9 +25,9 @@ jobs:
     timeout-minutes: 60
     env:
       GH_TOKEN: ${{ github.token }}
-      RELEASE_ID_INPUT: ${{ inputs.release_id }}
-      XP_ASSET: ${{ inputs.xp_asset }}
-      WIN7_ASSET: ${{ inputs.win7_asset }}
+      RELEASE_ID: ${{ inputs.release_id }}
+      XP_ASSET_ID: ${{ inputs.xp_asset_id }}
+      WIN7_ASSET_ID: ${{ inputs.win7_asset_id }}
 
     steps:
       - name: Checkout analysis code
@@ -41,66 +41,46 @@ jobs:
       - name: Install Python dependencies
         run: python -m pip install -r requirements.txt
 
-      - name: Locate draft release and download corpus assets
+      - name: Download corpus assets by fixed release/asset IDs
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p work/drivers work/reports
 
-          releases="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100")"
-
-          if [[ -n "$RELEASE_ID_INPUT" ]]; then
-            release="$(printf '%s' "$releases" | jq -c --argjson id "$RELEASE_ID_INPUT" '[.[] | select(.id == $id)][0] // empty')"
-            if [[ -z "$release" ]]; then
-              echo "No release found with ID: $RELEASE_ID_INPUT" >&2
-              exit 1
-            fi
-          else
-            release="$(printf '%s' "$releases" | jq -c --arg xp "$XP_ASSET" --arg win7 "$WIN7_ASSET" '
-              [ .[]
-                | select(.draft == true)
-                | select(any(.assets[]?; .name == $xp))
-                | select(any(.assets[]?; .name == $win7))
-              ][0] // empty')"
-            if [[ -z "$release" ]]; then
-              echo "No draft release contains both $XP_ASSET and $WIN7_ASSET" >&2
-              exit 1
-            fi
-          fi
-
-          release_id="$(printf '%s' "$release" | jq -r '.id')"
-          release_name="$(printf '%s' "$release" | jq -r '.name // ""')"
-          release_tag="$(printf '%s' "$release" | jq -r '.tag_name // ""')"
-          draft="$(printf '%s' "$release" | jq -r '.draft')"
-
+          echo "Fetching release ID ${RELEASE_ID}"
+          release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}")"
+          draft="$(printf '%s' "$release_json" | jq -r '.draft')"
           if [[ "$draft" != "true" ]]; then
-            echo "Refusing to use a non-draft release for proprietary driver corpus." >&2
+            echo "Release ID ${RELEASE_ID} is not a draft release" >&2
             exit 1
           fi
 
-          echo "Using draft release ID=$release_id name=$release_name tag_name=$release_tag"
-          printf 'release_id=%s\nname=%s\ntag_name=%s\n' "$release_id" "$release_name" "$release_tag" > work/reports/corpus_release.txt
+          printf '%s\n' "$release_json" | jq '{id, name, tag_name, draft, assets: [.assets[] | {id, name, size, digest}]}' \
+            > work/reports/corpus_release.json
 
-          download_asset() {
-            local wanted="$1"
-            local out="$2"
-            local asset_id
-            asset_id="$(printf '%s' "$release" | jq -r --arg name "$wanted" '.assets[]? | select(.name == $name) | .id' | head -n1)"
-            if [[ -z "$asset_id" || "$asset_id" == "null" ]]; then
-              echo "Asset not found in draft release ID $release_id: $wanted" >&2
+          download_asset_id() {
+            local asset_id="$1"
+            local expected_name="$2"
+            local out="$3"
+
+            echo "Inspecting asset ID ${asset_id}"
+            asset_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}")"
+            asset_name="$(printf '%s' "$asset_json" | jq -r '.name')"
+            if [[ "$asset_name" != "$expected_name" ]]; then
+              echo "Asset ID ${asset_id} is ${asset_name}, expected ${expected_name}" >&2
               exit 1
             fi
-            echo "Downloading $wanted (asset ID $asset_id)"
+
+            echo "Downloading ${asset_name} from asset ID ${asset_id}"
             gh api \
               -H 'Accept: application/octet-stream' \
               "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" > "$out"
+            test -s "$out"
           }
 
-          download_asset "$XP_ASSET" work/drivers/nv4_mini.sys
-          download_asset "$WIN7_ASSET" work/drivers/nvlddmkm.sys
+          download_asset_id "$XP_ASSET_ID" "nv4_mini.sys" work/drivers/nv4_mini.sys
+          download_asset_id "$WIN7_ASSET_ID" "nvlddmkm.sys" work/drivers/nvlddmkm.sys
 
-          test -s work/drivers/nv4_mini.sys
-          test -s work/drivers/nvlddmkm.sys
           sha256sum work/drivers/*.sys | tee work/reports/input_sha256.txt
 
       - name: Static PE scans
