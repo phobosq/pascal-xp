@@ -137,10 +137,12 @@ jobs:
             -postScript ExportProgramFacts.py "$GITHUB_WORKSPACE/work/reports/xp_program_facts.json" \
             -postScript ExportInterestingFunctionDetails.py "$GITHUB_WORKSPACE/work/reports/xp_interesting_function_details.json" \
             -postScript ExportArchitectureGates.py "$GITHUB_WORKSPACE/work/reports/xp_architecture_gates.json" \
+            -postScript ExportDispatchConsumers.py "$GITHUB_WORKSPACE/work/reports/xp_dispatch_consumers.json" \
             -deleteProject
           test -s work/reports/xp_program_facts.json
           test -s work/reports/xp_interesting_function_details.json
           test -s work/reports/xp_architecture_gates.json
+          test -s work/reports/xp_dispatch_consumers.json
 
       - name: PyGhidra headless Win7 donor
         shell: bash
@@ -155,10 +157,12 @@ jobs:
             -postScript ExportProgramFacts.py "$GITHUB_WORKSPACE/work/reports/win7_program_facts.json" \
             -postScript ExportInterestingFunctionDetails.py "$GITHUB_WORKSPACE/work/reports/win7_interesting_function_details.json" \
             -postScript ExportArchitectureGates.py "$GITHUB_WORKSPACE/work/reports/win7_architecture_gates.json" \
+            -postScript ExportDispatchConsumers.py "$GITHUB_WORKSPACE/work/reports/win7_dispatch_consumers.json" \
             -deleteProject
           test -s work/reports/win7_program_facts.json
           test -s work/reports/win7_interesting_function_details.json
           test -s work/reports/win7_architecture_gates.json
+          test -s work/reports/win7_dispatch_consumers.json
 
       - name: Build comparison and candidate reports
         shell: bash
@@ -167,6 +171,17 @@ jobs:
           python scripts/compare_program_facts.py work/reports/xp_program_facts.json work/reports/win7_program_facts.json --out work/reports/xp_vs_win7_program_facts.json
           python scripts/find_pascal_candidates.py work/reports/xp_program_facts.json --out work/reports/xp_pascal_candidates.json
           python scripts/find_pascal_candidates.py work/reports/win7_program_facts.json --out work/reports/win7_pascal_candidates.json
+
+      - name: Build first GP106 dispatch-probe driver
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p work/probe-driver
+          python scripts/build_probe_driver.py \
+            work/drivers/nv4_mini.sys \
+            work/probe-driver/nv4_mini_gp106_as_gm206_probe.sys \
+            --manifest work/probe-driver/manifest.json
+          sha256sum work/probe-driver/*
 
       - name: Remove proprietary input binaries before artifact upload
         if: always()
@@ -180,4 +195,13 @@ jobs:
           name: pascal-xp-36881-analysis-${{ github.run_number }}
           path: work/reports/
           if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload first GP106 dispatch-probe driver
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nv4-mini-gp106-dispatch-probe-${{ github.run_number }}
+          path: work/probe-driver/
+          if-no-files-found: error
           retention-days: 30
