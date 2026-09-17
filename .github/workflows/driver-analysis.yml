@@ -3,10 +3,10 @@ name: Driver analysis
 on:
   workflow_dispatch:
     inputs:
-      corpus_tag:
-        description: Draft release tag containing the two driver binaries
-        required: true
-        default: corpus-36881
+      release_id:
+        description: Optional draft release ID. Leave blank to use the newest draft containing both assets.
+        required: false
+        default: ''
       xp_asset:
         description: XP x64 driver asset filename
         required: true
@@ -25,7 +25,7 @@ jobs:
     timeout-minutes: 60
     env:
       GH_TOKEN: ${{ github.token }}
-      CORPUS_TAG: ${{ inputs.corpus_tag }}
+      RELEASE_ID_INPUT: ${{ inputs.release_id }}
       XP_ASSET: ${{ inputs.xp_asset }}
       WIN7_ASSET: ${{ inputs.win7_asset }}
 
@@ -48,28 +48,49 @@ jobs:
           mkdir -p work/drivers work/reports
 
           releases="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100")"
-          release_id="$(printf '%s' "$releases" | jq -r --arg tag "$CORPUS_TAG" '[.[] | select(.tag_name == $tag)][0].id // empty')"
 
-          if [[ -z "$release_id" ]]; then
-            echo "No release (draft or published) found with tag: $CORPUS_TAG" >&2
-            exit 1
+          if [[ -n "$RELEASE_ID_INPUT" ]]; then
+            release="$(printf '%s' "$releases" | jq -c --argjson id "$RELEASE_ID_INPUT" '[.[] | select(.id == $id)][0] // empty')"
+            if [[ -z "$release" ]]; then
+              echo "No release found with ID: $RELEASE_ID_INPUT" >&2
+              exit 1
+            fi
+          else
+            release="$(printf '%s' "$releases" | jq -c --arg xp "$XP_ASSET" --arg win7 "$WIN7_ASSET" '
+              [ .[]
+                | select(.draft == true)
+                | select(any(.assets[]?; .name == $xp))
+                | select(any(.assets[]?; .name == $win7))
+              ][0] // empty')"
+            if [[ -z "$release" ]]; then
+              echo "No draft release contains both $XP_ASSET and $WIN7_ASSET" >&2
+              exit 1
+            fi
           fi
 
-          draft="$(printf '%s' "$releases" | jq -r --arg tag "$CORPUS_TAG" '[.[] | select(.tag_name == $tag)][0].draft')"
+          release_id="$(printf '%s' "$release" | jq -r '.id')"
+          release_name="$(printf '%s' "$release" | jq -r '.name // ""')"
+          release_tag="$(printf '%s' "$release" | jq -r '.tag_name // ""')"
+          draft="$(printf '%s' "$release" | jq -r '.draft')"
+
           if [[ "$draft" != "true" ]]; then
             echo "Refusing to use a non-draft release for proprietary driver corpus." >&2
             exit 1
           fi
 
+          echo "Using draft release ID=$release_id name=$release_name tag_name=$release_tag"
+          printf 'release_id=%s\nname=%s\ntag_name=%s\n' "$release_id" "$release_name" "$release_tag" > work/reports/corpus_release.txt
+
           download_asset() {
             local wanted="$1"
             local out="$2"
             local asset_id
-            asset_id="$(printf '%s' "$releases" | jq -r --arg tag "$CORPUS_TAG" --arg name "$wanted" '[.[] | select(.tag_name == $tag)][0].assets[]? | select(.name == $name) | .id' | head -n1)"
-            if [[ -z "$asset_id" ]]; then
-              echo "Asset not found in draft release $CORPUS_TAG: $wanted" >&2
+            asset_id="$(printf '%s' "$release" | jq -r --arg name "$wanted" '.assets[]? | select(.name == $name) | .id' | head -n1)"
+            if [[ -z "$asset_id" || "$asset_id" == "null" ]]; then
+              echo "Asset not found in draft release ID $release_id: $wanted" >&2
               exit 1
             fi
+            echo "Downloading $wanted (asset ID $asset_id)"
             gh api \
               -H 'Accept: application/octet-stream' \
               "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" > "$out"
@@ -78,6 +99,8 @@ jobs:
           download_asset "$XP_ASSET" work/drivers/nv4_mini.sys
           download_asset "$WIN7_ASSET" work/drivers/nvlddmkm.sys
 
+          test -s work/drivers/nv4_mini.sys
+          test -s work/drivers/nvlddmkm.sys
           sha256sum work/drivers/*.sys | tee work/reports/input_sha256.txt
 
       - name: Static PE scans
