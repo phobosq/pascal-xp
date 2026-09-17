@@ -15,6 +15,7 @@ PCI_VALUES = set([0x1c03])  # common GTX 1060 6GB device ID
 TARGET_VALUES = CHIPSET_VALUES | PCI_VALUES
 PASCAL_FAMILY_VALUES = set([0x130, 0x132, 0x134, 0x136, 0x137, 0x138])
 MAX_DECOMP_CHARS = 50000
+MAPPER_VTABLE_OFFSET = 0x190
 
 
 def addr(x):
@@ -79,6 +80,50 @@ def find_gates():
             "values": [{"operand": op, "value": v, "hex": "0x%x" % v} for op, v in filtered],
         })
     return hits
+
+
+def find_mapper_slot_uses():
+    """Find every instruction that accesses the mapper function-pointer slot.
+
+    The Pascal-family mapper is installed at object offset 0x190 by the paired
+    XP/Win7 table initializers.  Consumers can either call [obj+0x190]
+    directly or load the pointer first and call through a register, so this
+    deliberately exports all memory accesses to that displacement.
+    """
+    listing = currentProgram.getListing()
+    it = listing.getInstructions(True)
+    owners = {}
+    while it.hasNext():
+        insn = it.next()
+        matching_operands = []
+        for op_index in range(insn.getNumOperands()):
+            representation = insn.getDefaultOperandRepresentation(op_index)
+            if representation is None or "[" not in representation:
+                continue
+            if MAPPER_VTABLE_OFFSET not in scalar_values_for_operand(insn, op_index):
+                continue
+            matching_operands.append({
+                "index": op_index,
+                "representation": representation,
+            })
+        if not matching_operands:
+            continue
+        fn = containing_function(insn.getAddress())
+        if fn is None or fn.isExternal():
+            continue
+        key = addr(fn.getEntryPoint())
+        rec = owners.setdefault(key, {
+            "function": fn,
+            "uses": [],
+        })
+        rec["uses"].append({
+            "address": addr(insn.getAddress()),
+            "mnemonic": insn.getMnemonicString().upper(),
+            "text": str(insn),
+            "operands": matching_operands,
+            "instruction_context": instruction_context(insn.getAddress(), 6),
+        })
+    return owners
 
 
 def calls(fn):
@@ -336,9 +381,11 @@ def main():
         return
 
     hits = find_gates()
+    mapper_slot_uses = find_mapper_slot_uses()
     di = DecompInterface()
     di.openProgram(currentProgram)
     records = []
+    mapper_slot_records = []
     try:
         for key in sorted(hits.keys()):
             fn = hits[key]["function"]
@@ -359,16 +406,30 @@ def main():
                 raw_pointer_occurrences(fn) if record["is_pascal_family_mapper"] else []
             )
             records.append(record)
+        for key in sorted(mapper_slot_uses.keys()):
+            fn = mapper_slot_uses[key]["function"]
+            mapper_slot_records.append({
+                "entry": key,
+                "name": fn.getName(),
+                "size": fn.getBody().getNumAddresses(),
+                "uses": mapper_slot_uses[key]["uses"],
+                "callers": callers(fn),
+                "calls": calls(fn),
+                "decompilation": decompile(di, fn),
+            })
     finally:
         di.dispose()
 
     obj = {
-        "schema_version": 4,
+        "schema_version": 5,
         "program": currentProgram.getName(),
         "chipset_values": ["0x%x" % v for v in sorted(CHIPSET_VALUES)],
         "pci_values": ["0x%x" % v for v in sorted(PCI_VALUES)],
         "function_count": len(records),
         "functions": records,
+        "mapper_vtable_offset": "0x%x" % MAPPER_VTABLE_OFFSET,
+        "mapper_slot_function_count": len(mapper_slot_records),
+        "mapper_slot_functions": mapper_slot_records,
     }
     fw = FileWriter(args[0])
     try:
