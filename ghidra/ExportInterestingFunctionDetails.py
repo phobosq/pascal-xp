@@ -10,10 +10,20 @@ import json
 INTERESTING_TERMS = [
     "GP106", "GP104", "GP102", "PASCAL", "FECS", "GPCCS", "ACR",
     "FALCON", "PMU", "SEC2", "PGRAPH", "PFIFO", "MMU", "CTXSW",
-    "UCODE", "FIRMWARE", "HUBCLIENT", "GPCCLIENT", "FBPTE", "PTE", "PDE"
+    "UCODE", "FIRMWARE", "HUBCLIENT", "GPCCLIENT", "FBPTE", "PTE", "PDE",
+    "PREWIN8", "APERTURE"
 ]
 
-MAX_FUNCTIONS = 240
+HIGH_PRIORITY_TERMS = [
+    "GP106", "GP104", "GP102", "PASCAL", "FBPTE", "PREWIN8", "APERTURE"
+]
+
+CORE_RM_TERMS = [
+    "FECS", "GPCCS", "ACR", "FALCON", "PMU", "SEC2", "PGRAPH", "PFIFO",
+    "MMU", "CTXSW", "HUBCLIENT", "GPCCLIENT"
+]
+
+MAX_FUNCTIONS = 500
 MAX_DECOMP_CHARS = 30000
 MAX_INSTRUCTIONS_PER_FUNCTION = 6000
 
@@ -86,6 +96,27 @@ def expand_neighbors(selected, reasons):
                     add_fn(selected, reasons, caller, "caller-of:%s" % src_key)
             except:
                 pass
+
+
+def reason_priority(reason_list):
+    # Direct string xrefs always outrank callgraph neighbors. Within direct xrefs,
+    # explicit Pascal/GP10x/FBPTE/pre-Win8/aperture evidence outranks generic RM terms.
+    direct = [r.upper() for r in reason_list if r.startswith("string:")]
+    if any(any(term in r for term in HIGH_PRIORITY_TERMS) for r in direct):
+        return 0
+    if any(any(term in r for term in CORE_RM_TERMS) for r in direct):
+        return 1
+    if direct:
+        return 2
+    if any(r.startswith("caller-of:") for r in reason_list):
+        return 3
+    if any(r.startswith("callee-of:") for r in reason_list):
+        return 4
+    return 5
+
+
+def selection_key(key, reasons):
+    return (reason_priority(reasons.get(key, [])), key)
 
 
 def instruction_records(fn):
@@ -201,7 +232,8 @@ def main():
     seed_from_interesting_strings(selected, reasons)
     expand_neighbors(selected, reasons)
 
-    keys = sorted(selected.keys())[:MAX_FUNCTIONS]
+    ordered_keys = sorted(selected.keys(), key=lambda k: selection_key(k, reasons))
+    keys = ordered_keys[:MAX_FUNCTIONS]
 
     decompiler = DecompInterface()
     decompiler.openProgram(currentProgram)
@@ -214,6 +246,7 @@ def main():
                 "name": fn.getName(),
                 "entry": key,
                 "size": fn.getBody().getNumAddresses(),
+                "selection_priority": reason_priority(reasons.get(key, [])),
                 "reasons": reasons.get(key, []),
                 "callers": caller_records(fn),
                 "calls": call_records(fn),
@@ -224,9 +257,10 @@ def main():
         decompiler.dispose()
 
     obj = {
-        "schema_version": 1,
+        "schema_version": 2,
         "program": currentProgram.getName(),
         "interesting_terms": INTERESTING_TERMS,
+        "high_priority_terms": HIGH_PRIORITY_TERMS,
         "selected_count": len(keys),
         "selection_count_before_limit": len(selected),
         "max_functions": MAX_FUNCTIONS,
