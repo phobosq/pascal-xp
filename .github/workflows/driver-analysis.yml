@@ -1,0 +1,163 @@
+name: Driver analysis
+
+on:
+  workflow_dispatch:
+    inputs:
+      corpus_tag:
+        description: Draft release tag containing the two driver binaries
+        required: true
+        default: corpus-36881
+      xp_asset:
+        description: XP x64 driver asset filename
+        required: true
+        default: nv4_mini.sys
+      win7_asset:
+        description: Windows 7 x64 driver asset filename
+        required: true
+        default: nvlddmkm.sys
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CORPUS_TAG: ${{ inputs.corpus_tag }}
+      XP_ASSET: ${{ inputs.xp_asset }}
+      WIN7_ASSET: ${{ inputs.win7_asset }}
+
+    steps:
+      - name: Checkout analysis code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Locate draft release and download corpus assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p work/drivers work/reports
+
+          releases="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100")"
+          release_id="$(printf '%s' "$releases" | jq -r --arg tag "$CORPUS_TAG" '[.[] | select(.tag_name == $tag)][0].id // empty')"
+
+          if [[ -z "$release_id" ]]; then
+            echo "No release (draft or published) found with tag: $CORPUS_TAG" >&2
+            exit 1
+          fi
+
+          draft="$(printf '%s' "$releases" | jq -r --arg tag "$CORPUS_TAG" '[.[] | select(.tag_name == $tag)][0].draft')"
+          if [[ "$draft" != "true" ]]; then
+            echo "Refusing to use a non-draft release for proprietary driver corpus." >&2
+            exit 1
+          fi
+
+          download_asset() {
+            local wanted="$1"
+            local out="$2"
+            local asset_id
+            asset_id="$(printf '%s' "$releases" | jq -r --arg tag "$CORPUS_TAG" --arg name "$wanted" '[.[] | select(.tag_name == $tag)][0].assets[]? | select(.name == $name) | .id' | head -n1)"
+            if [[ -z "$asset_id" ]]; then
+              echo "Asset not found in draft release $CORPUS_TAG: $wanted" >&2
+              exit 1
+            fi
+            gh api \
+              -H 'Accept: application/octet-stream' \
+              "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" > "$out"
+          }
+
+          download_asset "$XP_ASSET" work/drivers/nv4_mini.sys
+          download_asset "$WIN7_ASSET" work/drivers/nvlddmkm.sys
+
+          sha256sum work/drivers/*.sys | tee work/reports/input_sha256.txt
+
+      - name: Static PE scans
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/scan_pe.py work/drivers/nv4_mini.sys --out work/reports/xp_pe.json
+          python scripts/scan_pe.py work/drivers/nvlddmkm.sys --out work/reports/win7_pe.json
+          python scripts/scan_pascal_firmware.py work/drivers/nv4_mini.sys --out work/reports/xp_firmware.json
+          python scripts/scan_pascal_firmware.py work/drivers/nvlddmkm.sys --out work/reports/win7_firmware.json
+
+      - name: Download latest Ghidra release
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p work/tools
+          release_json="$(gh api repos/NationalSecurityAgency/ghidra/releases/latest)"
+          url="$(printf '%s' "$release_json" | jq -r '.assets[] | select(.name | endswith(".zip")) | .browser_download_url' | head -n1)"
+          if [[ -z "$url" || "$url" == "null" ]]; then
+            echo "Could not locate a Ghidra release ZIP" >&2
+            exit 1
+          fi
+          curl -fL "$url" -o work/tools/ghidra.zip
+          unzip -q work/tools/ghidra.zip -d work/tools
+          analyze="$(find work/tools -type f -path '*/support/analyzeHeadless' | head -n1)"
+          if [[ -z "$analyze" ]]; then
+            echo "analyzeHeadless not found" >&2
+            exit 1
+          fi
+          chmod +x "$analyze"
+          echo "ANALYZE_HEADLESS=$analyze" >> "$GITHUB_ENV"
+
+      - name: Ghidra headless XP recipient
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p work/ghidra-projects
+          "$ANALYZE_HEADLESS" work/ghidra-projects xp_recipient \
+            -import work/drivers/nv4_mini.sys \
+            -scriptPath "$GITHUB_WORKSPACE/ghidra" \
+            -postScript ExportProgramFacts.py "$GITHUB_WORKSPACE/work/reports/xp_program_facts.json" \
+            -deleteProject
+
+      - name: Ghidra headless Win7 donor
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ANALYZE_HEADLESS" work/ghidra-projects win7_donor \
+            -import work/drivers/nvlddmkm.sys \
+            -scriptPath "$GITHUB_WORKSPACE/ghidra" \
+            -postScript ExportProgramFacts.py "$GITHUB_WORKSPACE/work/reports/win7_program_facts.json" \
+            -deleteProject
+
+      - name: Build comparison and candidate reports
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/compare_program_facts.py \
+            work/reports/xp_program_facts.json \
+            work/reports/win7_program_facts.json \
+            --out work/reports/xp_vs_win7_program_facts.json
+
+          python scripts/find_pascal_candidates.py \
+            work/reports/xp_program_facts.json \
+            --out work/reports/xp_pascal_candidates.json
+
+          python scripts/find_pascal_candidates.py \
+            work/reports/win7_program_facts.json \
+            --out work/reports/win7_pascal_candidates.json
+
+      - name: Remove proprietary input binaries before artifact upload
+        if: always()
+        shell: bash
+        run: rm -rf work/drivers work/ghidra-projects work/tools
+
+      - name: Upload analysis reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pascal-xp-36881-analysis-${{ github.run_number }}
+          path: work/reports/
+          if-no-files-found: warn
+          retention-days: 30
