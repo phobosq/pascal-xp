@@ -44,8 +44,6 @@ def find_gates():
     while it.hasNext():
         insn = it.next()
         mnemonic = insn.getMnemonicString().upper()
-        # Immediate-generation checks are most useful when the interesting value
-        # is the RHS of CMP/SUB or an immediate loaded into a register/table.
         interesting = []
         for op_index in range(insn.getNumOperands()):
             vals = scalar_values_for_operand(insn, op_index)
@@ -54,8 +52,6 @@ def find_gates():
                     interesting.append((op_index, v))
         if not interesting:
             continue
-        # Avoid drowning in structure offsets: for CMP/SUB require the value in
-        # a non-first operand. For MOV/LEA/etc retain only explicit second-op hits.
         filtered = []
         for op_index, v in interesting:
             if mnemonic in ("CMP", "SUB"):
@@ -108,6 +104,29 @@ def calls(fn):
     return out
 
 
+def callers(fn):
+    out = []
+    seen = set()
+    for r in getReferencesTo(fn.getEntryPoint()):
+        try:
+            if not r.getReferenceType().isCall():
+                continue
+            caller = containing_function(r.getFromAddress())
+            item = {
+                "from": addr(r.getFromAddress()),
+                "caller_entry": addr(caller.getEntryPoint()) if caller else None,
+                "caller_name": caller.getName() if caller else None,
+                "type": str(r.getReferenceType()),
+            }
+            k = (item["from"], item["caller_entry"])
+            if k not in seen:
+                seen.add(k)
+                out.append(item)
+        except:
+            pass
+    return out
+
+
 def decompile(di, fn):
     try:
         result = di.decompileFunction(fn, 90, monitor)
@@ -139,6 +158,7 @@ def main():
                 "name": fn.getName(),
                 "size": fn.getBody().getNumAddresses(),
                 "hits": hits[key]["hits"],
+                "callers": callers(fn),
                 "calls": calls(fn),
                 "decompilation": decompile(di, fn),
             })
@@ -146,7 +166,7 @@ def main():
         di.dispose()
 
     obj = {
-        "schema_version": 1,
+        "schema_version": 2,
         "program": currentProgram.getName(),
         "chipset_values": ["0x%x" % v for v in sorted(CHIPSET_VALUES)],
         "pci_values": ["0x%x" % v for v in sorted(PCI_VALUES)],
