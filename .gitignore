@@ -1,0 +1,11 @@
+work/
+*.BinExport
+*.BinDiff
+*.idb
+*.i64
+*.ghidra
+__pycache__/
+*.pyc
+# Local proprietary driver material
+drivers/
+corpus/local/
