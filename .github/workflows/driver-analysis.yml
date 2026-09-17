@@ -1,6 +1,11 @@
 name: Driver analysis
 
 on:
+  push:
+    paths:
+      - '.github/workflows/driver-analysis.yml'
+      - 'ghidra/**'
+      - 'scripts/**'
   workflow_dispatch:
     inputs:
       release_id:
@@ -25,9 +30,9 @@ jobs:
     timeout-minutes: 60
     env:
       GH_TOKEN: ${{ secrets.CORPUS_TOKEN }}
-      RELEASE_ID: ${{ inputs.release_id }}
-      XP_ASSET_ID: ${{ inputs.xp_asset_id }}
-      WIN7_ASSET_ID: ${{ inputs.win7_asset_id }}
+      RELEASE_ID: ${{ inputs.release_id || '390358348' }}
+      XP_ASSET_ID: ${{ inputs.xp_asset_id || '569106389' }}
+      WIN7_ASSET_ID: ${{ inputs.win7_asset_id || '569106473' }}
 
     steps:
       - name: Verify corpus token is configured
