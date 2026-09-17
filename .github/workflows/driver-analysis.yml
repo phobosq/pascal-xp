@@ -136,9 +136,11 @@ jobs:
             -scriptPath "$GITHUB_WORKSPACE/ghidra" \
             -postScript ExportProgramFacts.py "$GITHUB_WORKSPACE/work/reports/xp_program_facts.json" \
             -postScript ExportInterestingFunctionDetails.py "$GITHUB_WORKSPACE/work/reports/xp_interesting_function_details.json" \
+            -postScript ExportArchitectureGates.py "$GITHUB_WORKSPACE/work/reports/xp_architecture_gates.json" \
             -deleteProject
           test -s work/reports/xp_program_facts.json
           test -s work/reports/xp_interesting_function_details.json
+          test -s work/reports/xp_architecture_gates.json
 
       - name: PyGhidra headless Win7 donor
         shell: bash
@@ -152,9 +154,11 @@ jobs:
             -scriptPath "$GITHUB_WORKSPACE/ghidra" \
             -postScript ExportProgramFacts.py "$GITHUB_WORKSPACE/work/reports/win7_program_facts.json" \
             -postScript ExportInterestingFunctionDetails.py "$GITHUB_WORKSPACE/work/reports/win7_interesting_function_details.json" \
+            -postScript ExportArchitectureGates.py "$GITHUB_WORKSPACE/work/reports/win7_architecture_gates.json" \
             -deleteProject
           test -s work/reports/win7_program_facts.json
           test -s work/reports/win7_interesting_function_details.json
+          test -s work/reports/win7_architecture_gates.json
 
       - name: Build comparison and candidate reports
         shell: bash
