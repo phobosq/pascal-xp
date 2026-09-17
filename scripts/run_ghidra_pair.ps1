@@ -15,6 +15,8 @@ New-Item -ItemType Directory -Force -Path $work | Out-Null
 $xpJson = Join-Path $work "xp_program_facts.json"
 $win7Json = Join-Path $work "win7_program_facts.json"
 $compareJson = Join-Path $work "xp_vs_win7_program_facts.json"
+$xpCandidates = Join-Path $work "xp_pascal_candidates.json"
+$win7Candidates = Join-Path $work "win7_pascal_candidates.json"
 
 function Invoke-GhidraExport {
     param(
@@ -44,7 +46,21 @@ if ($LASTEXITCODE -ne 0) {
     throw "compare_program_facts.py failed"
 }
 
+Write-Host "[candidates] ranking XP functions"
+python .\scripts\find_pascal_candidates.py $xpJson --out $xpCandidates | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    throw "find_pascal_candidates.py failed for XP"
+}
+
+Write-Host "[candidates] ranking Win7 functions"
+python .\scripts\find_pascal_candidates.py $win7Json --out $win7Candidates | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    throw "find_pascal_candidates.py failed for Win7"
+}
+
 Write-Host "Done. Reports:"
 Write-Host "  $xpJson"
 Write-Host "  $win7Json"
 Write-Host "  $compareJson"
+Write-Host "  $xpCandidates"
+Write-Host "  $win7Candidates"
