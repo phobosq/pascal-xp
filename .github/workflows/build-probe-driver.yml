@@ -1,0 +1,79 @@
+name: Build GP106 dispatch probe
+
+on:
+  push:
+    paths:
+      - '.github/workflows/build-probe-driver.yml'
+      - 'scripts/build_probe_driver.py'
+  workflow_dispatch:
+    inputs:
+      release_id:
+        description: Draft release ID containing nv4_mini.sys
+        required: true
+        default: '390358348'
+      xp_asset_id:
+        description: Release asset ID for nv4_mini.sys
+        required: true
+        default: '569106389'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.CORPUS_TOKEN }}
+      RELEASE_ID: ${{ inputs.release_id || '390358348' }}
+      XP_ASSET_ID: ${{ inputs.xp_asset_id || '569106389' }}
+
+    steps:
+      - name: Checkout patch builder
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Download stock XP 368.81 miniport
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${GH_TOKEN:-}"
+          mkdir -p work/input work/output
+          release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}")"
+          test "$(printf '%s' "$release_json" | jq -r '.draft')" = true
+          asset_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/assets/${XP_ASSET_ID}")"
+          test "$(printf '%s' "$asset_json" | jq -r '.name')" = nv4_mini.sys
+          gh api -H 'Accept: application/octet-stream' \
+            "repos/${GITHUB_REPOSITORY}/releases/assets/${XP_ASSET_ID}" \
+            > work/input/nv4_mini.sys
+          test -s work/input/nv4_mini.sys
+
+      - name: Patch GP106 architecture dispatch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build_probe_driver.py \
+            work/input/nv4_mini.sys \
+            work/output/nv4_mini_gp106_as_gm206_probe.sys \
+            --manifest work/output/manifest.json
+          sha256sum work/output/*
+
+      - name: Remove stock input
+        if: always()
+        run: rm -rf work/input
+
+      - name: Upload probe driver
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nv4-mini-gp106-dispatch-probe-${{ github.run_number }}
+          path: work/output/
+          if-no-files-found: error
+          retention-days: 30
