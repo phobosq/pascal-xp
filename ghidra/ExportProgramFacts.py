@@ -5,34 +5,60 @@
 # analyzeHeadless <project_dir> <project_name> -import <binary> \
 #   -postScript ExportProgramFacts.py <output.json>
 
-from ghidra.program.model.data import StringDataInstance
-from ghidra.util.task import TaskMonitor
 from java.io import FileWriter
 import json
-import sys
+
+INTERESTING_TERMS = [
+    "GP106", "GP104", "GP102", "PASCAL", "FECS", "GPCCS", "ACR",
+    "FALCON", "PMU", "SEC2", "PGRAPH", "PFIFO", "MMU", "CTXSW",
+    "UCODE", "FIRMWARE", "10DE", "1C03"
+]
 
 
 def addr(x):
     return str(x) if x is not None else None
 
 
-def safe_name(obj):
+def containing_function(a):
     try:
-        return obj.getName()
+        f = getFunctionContaining(a)
+        if f is None:
+            return None
+        return {"name": f.getName(), "entry": addr(f.getEntryPoint())}
     except:
         return None
 
 
-def function_record(fm, fn):
+def function_record(fn):
     body = fn.getBody()
     refs_in = 0
     refs_out = 0
+    calls = []
 
     it = body.getAddresses(True)
     while it.hasNext():
         a = it.next()
         refs_in += len(getReferencesTo(a))
-        refs_out += len(getReferencesFrom(a))
+        for r in getReferencesFrom(a):
+            refs_out += 1
+            try:
+                if r.getReferenceType().isCall():
+                    target = getFunctionAt(r.getToAddress())
+                    calls.append({
+                        "from": addr(a),
+                        "to": addr(r.getToAddress()),
+                        "target_name": target.getName() if target else None,
+                    })
+            except:
+                pass
+
+    uniq = []
+    seen = set()
+    for c in calls:
+        key = (c["from"], c["to"])
+        if key not in seen:
+            seen.add(key)
+            uniq.append(c)
 
     return {
         "name": fn.getName(),
@@ -44,6 +70,7 @@ def function_record(fm, fn):
         "parameter_count": fn.getParameterCount(),
         "refs_in": refs_in,
         "refs_out": refs_out,
+        "calls": uniq,
     }
 
 
@@ -60,11 +87,21 @@ def export_strings():
             if value is None:
                 continue
             text = str(value)
+            refs = []
+            for r in getReferencesTo(d.getAddress()):
+                refs.append({
+                    "from": addr(r.getFromAddress()),
+                    "type": str(r.getReferenceType()),
+                    "function": containing_function(r.getFromAddress()),
+                })
+            upper = text.upper()
+            terms = [t for t in INTERESTING_TERMS if t in upper]
             out.append({
                 "address": addr(d.getAddress()),
                 "length": d.getLength(),
                 "value": text,
-                "xrefs": len(getReferencesTo(d.getAddress())),
+                "xrefs": refs,
+                "interesting_terms": terms,
             })
         except:
             pass
@@ -78,11 +115,14 @@ def export_symbols(limit=200000):
     count = 0
     while it.hasNext() and count < limit:
         s = it.next()
+        name = s.getName()
+        upper = name.upper()
         out.append({
-            "name": s.getName(),
+            "name": name,
             "address": addr(s.getAddress()),
             "type": str(s.getSymbolType()),
             "source": str(s.getSource()),
+            "interesting_terms": [t for t in INTERESTING_TERMS if t in upper],
         })
         count += 1
     return out
@@ -99,7 +139,7 @@ def main():
     functions = []
     it = fm.getFunctions(True)
     while it.hasNext():
-        functions.append(function_record(fm, it.next()))
+        functions.append(function_record(it.next()))
 
     memory = currentProgram.getMemory()
     blocks = []
@@ -115,7 +155,7 @@ def main():
         })
 
     obj = {
-        "schema_version": 1,
+        "schema_version": 2,
         "program": {
             "name": currentProgram.getName(),
             "language": str(currentProgram.getLanguageID()),
@@ -123,6 +163,7 @@ def main():
             "image_base": addr(currentProgram.getImageBase()),
             "executable_format": currentProgram.getExecutableFormat(),
         },
+        "interesting_terms": INTERESTING_TERMS,
         "memory_blocks": blocks,
         "functions": functions,
         "strings": export_strings(),
