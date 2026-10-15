@@ -4,6 +4,7 @@
 import json
 from ghidra.app.decompiler import DecompInterface
 from ghidra.program.model.lang import OperandType
+from ghidra.program.model.pcode import PcodeOp
 from ghidra.program.model.scalar import Scalar
 
 SLOTS = (0x190, 0x1c8, 0x1d8, 0x1e8, 0x1f8)
@@ -48,9 +49,19 @@ def slot_operands(insn):
         for offset in SLOTS:
             if offset in values:
                 flags = insn.getOperandType(n)
-                # LEA computes an address; it does not access the pointed-to memory.
-                access = "address" if insn.getMnemonicString().upper() == "LEA" else (
-                    "write" if OperandType.doesWrite(flags) else "read")
+                # OperandType.doesWrite() is not reliable for x86 memory operands:
+                # Ghidra may report MOV [base+disp],src as read-only. Inspect
+                # the instruction's p-code STORE instead, excluding instructions
+                # whose implicit stack writes are unrelated to the operand.
+                mnemonic = insn.getMnemonicString().upper()
+                if mnemonic == "LEA":
+                    access = "address"
+                elif mnemonic.startswith(("CALL", "PUSH", "ENTER")):
+                    access = "read"
+                elif any(op.getOpcode() == PcodeOp.STORE for op in insn.getPcode()):
+                    access = "write"
+                else:
+                    access = "write" if OperandType.doesWrite(flags) else "read"
                 found.append({"offset": "0x%x" % offset, "operand": n,
                               "operand_text": str(rep), "access": access})
     return found
