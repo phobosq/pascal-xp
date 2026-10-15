@@ -4,6 +4,7 @@
 from java.io import FileWriter
 from ghidra.app.decompiler import DecompInterface
 from ghidra.program.model.scalar import Scalar
+from ghidra.program.model.lang import OperandType
 from jpype import JArray, JByte
 import json
 
@@ -29,7 +30,14 @@ def containing_function(a):
     return fn
 
 
-def scalar_values_for_operand(insn, op_index):
+def scalar_values_for_operand(insn, op_index, immediate_only=False):
+    # Ghidra includes address displacements in getOpObjects() as Scalar.
+    # They are valid for vtable-slot discovery, but not architecture gates.
+    if immediate_only:
+        operand_type = insn.getOperandType(op_index)
+        representation = insn.getDefaultOperandRepresentation(op_index)
+        if not OperandType.isScalar(operand_type) or (representation and "[" in representation):
+            return []
     out = []
     for obj in insn.getOpObjects(op_index):
         if isinstance(obj, Scalar):
@@ -49,7 +57,7 @@ def find_gates():
         mnemonic = insn.getMnemonicString().upper()
         interesting = []
         for op_index in range(insn.getNumOperands()):
-            vals = scalar_values_for_operand(insn, op_index)
+            vals = scalar_values_for_operand(insn, op_index, immediate_only=True)
             for v in vals:
                 if v in TARGET_VALUES:
                     interesting.append((op_index, v))
@@ -421,7 +429,7 @@ def main():
         di.dispose()
 
     obj = {
-        "schema_version": 5,
+        "schema_version": 6,
         "program": currentProgram.getName(),
         "chipset_values": ["0x%x" % v for v in sorted(CHIPSET_VALUES)],
         "pci_values": ["0x%x" % v for v in sorted(PCI_VALUES)],
