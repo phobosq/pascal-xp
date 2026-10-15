@@ -138,11 +138,13 @@ jobs:
             -postScript ExportInterestingFunctionDetails.py "$GITHUB_WORKSPACE/work/reports/xp_interesting_function_details.json" \
             -postScript ExportArchitectureGates.py "$GITHUB_WORKSPACE/work/reports/xp_architecture_gates.json" \
             -postScript ExportDispatchConsumers.py "$GITHUB_WORKSPACE/work/reports/xp_dispatch_consumers.json" \
+            -postScript ExportFecsTrace.py "$GITHUB_WORKSPACE/work/reports/xp_fecs_trace.json" xp \
             -deleteProject
           test -s work/reports/xp_program_facts.json
           test -s work/reports/xp_interesting_function_details.json
           test -s work/reports/xp_architecture_gates.json
           test -s work/reports/xp_dispatch_consumers.json
+          test -s work/reports/xp_fecs_trace.json
 
       - name: PyGhidra headless Win7 donor
         shell: bash
@@ -158,11 +160,13 @@ jobs:
             -postScript ExportInterestingFunctionDetails.py "$GITHUB_WORKSPACE/work/reports/win7_interesting_function_details.json" \
             -postScript ExportArchitectureGates.py "$GITHUB_WORKSPACE/work/reports/win7_architecture_gates.json" \
             -postScript ExportDispatchConsumers.py "$GITHUB_WORKSPACE/work/reports/win7_dispatch_consumers.json" \
+            -postScript ExportFecsTrace.py "$GITHUB_WORKSPACE/work/reports/win7_fecs_trace.json" win7 \
             -deleteProject
           test -s work/reports/win7_program_facts.json
           test -s work/reports/win7_interesting_function_details.json
           test -s work/reports/win7_architecture_gates.json
           test -s work/reports/win7_dispatch_consumers.json
+          test -s work/reports/win7_fecs_trace.json
 
       - name: Build comparison and candidate reports
         shell: bash
