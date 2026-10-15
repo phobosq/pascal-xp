@@ -1,0 +1,12 @@
+{
+  "source_run": 19,
+  "source_commit": "2a8ea7c1ba0314742bedb35e0efa5ad2f37ca80e",
+  "interpretation": "0x136 is used both as a GPU family return and as an RM object key; distinguish by usage, not literal value.",
+  "xp_win7_pairs": [
+    {"role": "object_allocate", "xp": "00231120", "win7": "009e1824"},
+    {"role": "object_free", "xp": "002312e0", "win7": "009e1a10"},
+    {"role": "register_capture", "xp": "00231e20", "win7": "009e2d98"},
+    {"role": "register_restore", "xp": "00232250", "win7": "009e1b20"}
+  ],
+  "mapper": {"xp": "003611d0", "win7": "002f4470"}
+}
