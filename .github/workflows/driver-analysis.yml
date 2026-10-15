@@ -187,6 +187,8 @@ jobs:
           python scripts/compare_program_facts.py work/reports/xp_program_facts.json work/reports/win7_program_facts.json --out work/reports/xp_vs_win7_program_facts.json
           python scripts/find_pascal_candidates.py work/reports/xp_program_facts.json --out work/reports/xp_pascal_candidates.json
           python scripts/find_pascal_candidates.py work/reports/win7_program_facts.json --out work/reports/win7_pascal_candidates.json
+          python scripts/compare_fecs_status_flow.py work/reports/xp_fecs_status_flow.json work/reports/win7_fecs_status_flow.json --out work/reports/xp_vs_win7_fecs_status_flow.json
+          test -s work/reports/xp_vs_win7_fecs_status_flow.json
 
       - name: Build first GP106 dispatch-probe driver
         shell: bash
