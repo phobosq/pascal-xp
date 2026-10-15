@@ -50,7 +50,7 @@ def slot_operands(insn):
                 flags = insn.getOperandType(n)
                 # LEA computes an address; it does not access the pointed-to memory.
                 access = "address" if insn.getMnemonicString().upper() == "LEA" else (
-                    "write" if OperandType.isWrite(flags) else "read")
+                    "write" if OperandType.doesWrite(flags) else "read")
                 found.append({"offset": "0x%x" % offset, "operand": n,
                               "operand_text": str(rep), "access": access})
     return found
