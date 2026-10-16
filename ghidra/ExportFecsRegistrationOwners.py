@@ -35,14 +35,12 @@ def xrefs(a):
 
 def ptr_at(a):
     try:
-        value = int(mem.getLong(a)) & 0xffffffffffffffff
+        value = int(mem.getInt(a)) & 0xffffffff
         if value == 0:
             return {"address": str(a), "value": "0x0"}
         dest = addr(value)
         block = mem.getBlock(dest)
         fn = getFunctionAt(dest) if block is not None else None
-        if block is None and value > 0xffffffff:
-            return None
         return {"address": str(a), "value": "0x%x" % value,
                 "target_section": section(dest) if block else None,
                 "target_function": str(fn.getEntryPoint()) if fn else None}
@@ -53,7 +51,7 @@ def descriptor_window(site):
     result = []
     start = int(site.getOffset()) - WINDOW_BEFORE
     end = int(site.getOffset()) + WINDOW_AFTER
-    for off in range(start, end + 1, 8):
+    for off in range(start, end + 1, 4):
         a = addr(off)
         if section(a) != section(site):
             continue
@@ -61,7 +59,7 @@ def descriptor_window(site):
         if item is None:
             continue
         refs = xrefs(a)
-        if item.get("target_section") or refs or abs(off - int(site.getOffset())) <= 0x40:
+        if (item.get("target_section") and item.get("target_section") != ".pdata") or refs or abs(off - int(site.getOffset())) <= 0x40:
             item["relative"] = off - int(site.getOffset())
             if refs:
                 item["incoming_refs"] = refs
@@ -72,7 +70,7 @@ args = getScriptArgs()
 if len(args) != 2 or args[1] not in TARGETS:
     raise ValueError("Expected <out.json> <xp|win7>")
 out_path, platform = args
-report = {"schema_version": 1, "platform": platform,
+report = {"schema_version": 2, "platform": platform,
           "caveat": "Static DATA refs may include .pdata unwind metadata; exclude those from ownership inference. No runtime GP106 selection is established.",
           "consumers": []}
 for entry in TARGETS[platform]:
