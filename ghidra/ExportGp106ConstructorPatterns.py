@@ -63,7 +63,9 @@ while it.hasNext() and count<MAX_FUNCS:
     if len(offs)<MIN_WRITES or len(offs)>MAX_WRITES or offs[-1]-offs[0]>MAX_SPAN: continue
     # SupraGSX-like constructors tend to wire several nearby getters and often one farther GR pointer.
     short_getters=sum(1 for x in assigns if x["target_shape"] and x["target_shape"]["size"]<=256 and x["target_shape"]["calls"]<=2)
-    # Favor SupraGSX-like small wrappers: 3 nearby FECS/GPCCS writes or 1 GR-like write.\n    count_bonus = 0.55 if len(offs)==3 else (0.35 if len(offs)==1 else 0.20)\n    score=min(1.0, count_bonus + 0.08*short_getters + 0.03*min(len(offs),5))
+    # Favor SupraGSX-like small wrappers: 3 nearby FECS/GPCCS writes or 1 GR-like write.
+    count_bonus = 0.55 if len(offs)==3 else (0.35 if len(offs)==1 else 0.20)
+    score=min(1.0, count_bonus + 0.08*short_getters + 0.03*min(len(offs),5))
     rows.append({"entry":str(fn.getEntryPoint()),"name":fn.getName(),"function_size":int(fn.getBody().getNumAddresses()),
                  "offsets":offs,"assignments":assigns,"short_getters":short_getters,
                  "pattern_score":round(score,3),"decompilation":code[:MAX_DECOMP]})
