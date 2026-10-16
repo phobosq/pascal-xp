@@ -147,6 +147,7 @@ jobs:
             -postScript ExportFecsTableRoots.py "$GITHUB_WORKSPACE/work/reports/xp_fecs_table_roots.json" xp \
             -postScript ExportFecsDescriptorParents.py "$GITHUB_WORKSPACE/work/reports/xp_fecs_descriptor_parents.json" xp \
             -postScript ExportGp106ResourceWiring.py "$GITHUB_WORKSPACE/work/reports/xp_gp106_resource_wiring.json" xp \
+            -postScript ExportGp106ConstructorPatterns.py "$GITHUB_WORKSPACE/work/reports/xp_gp106_constructor_patterns.json" xp \
             -deleteProject
           test -s work/reports/xp_program_facts.json
           test -s work/reports/xp_interesting_function_details.json
@@ -161,6 +162,7 @@ jobs:
           test -s work/reports/xp_fecs_table_roots.json
           test -s work/reports/xp_fecs_descriptor_parents.json
           test -s work/reports/xp_gp106_resource_wiring.json
+          test -s work/reports/xp_gp106_constructor_patterns.json
 
       - name: PyGhidra headless Win7 donor
         shell: bash
@@ -185,6 +187,7 @@ jobs:
             -postScript ExportFecsTableRoots.py "$GITHUB_WORKSPACE/work/reports/win7_fecs_table_roots.json" win7 \
             -postScript ExportFecsDescriptorParents.py "$GITHUB_WORKSPACE/work/reports/win7_fecs_descriptor_parents.json" win7 \
             -postScript ExportGp106ResourceWiring.py "$GITHUB_WORKSPACE/work/reports/win7_gp106_resource_wiring.json" win7 \
+            -postScript ExportGp106ConstructorPatterns.py "$GITHUB_WORKSPACE/work/reports/win7_gp106_constructor_patterns.json" win7 \
             -deleteProject
           test -s work/reports/win7_program_facts.json
           test -s work/reports/win7_interesting_function_details.json
@@ -199,6 +202,7 @@ jobs:
           test -s work/reports/win7_fecs_table_roots.json
           test -s work/reports/win7_fecs_descriptor_parents.json
           test -s work/reports/win7_gp106_resource_wiring.json
+          test -s work/reports/win7_gp106_constructor_patterns.json
 
       - name: Build comparison and candidate reports
         shell: bash
