@@ -14,6 +14,7 @@ w7_roots=load("win7_fecs_table_roots.json")
 shape=load("xp_vs_win7_callback_shapes.json")
 slots=load("xp_vs_win7_fecs_slot_assignments.json")
 status=load("xp_vs_win7_fecs_status_flow.json")
+ctor=load("xp_vs_win7_gp106_constructor_ownership.json")
 
 def unique_owners(obj):
     out=set()
@@ -43,8 +44,18 @@ def root_owners(obj):
 xp_po=unique_owners(xp_par); w7_po=unique_owners(w7_par)
 xp_ro=root_owners(xp_roots); w7_ro=root_owners(w7_roots)
 top_shapes=(shape.get("ranked_pairs") or [])[:10]
+top_ctor=(ctor.get("top_actionable") or ctor.get("ranked_pairs") or [])[:10]
 
 next_actions=[]
+if top_ctor:
+    p=top_ctor[0]
+    next_actions.append({
+      "priority":1,
+      "reason":"A GP106-like constructor pair ranks highest after FECS-owner proximity and structural matching.",
+      "action":"Deep-trace the top XP/Win7 constructor pair and its getter targets; prefer this over broad scans.",
+      "targets":{"xp":p.get("xp_entry"),"win7":p.get("win7_entry"),"score":p.get("score"),
+                 "xp_fecs_proximity":p.get("xp_fecs_proximity"),"win7_fecs_proximity":p.get("win7_fecs_proximity")}
+    })
 if w7_po and not xp_po:
     next_actions.append({
       "priority":1,
@@ -75,6 +86,7 @@ summary={
    "xp_table_root_owners":xp_ro,
    "win7_table_root_owners":w7_ro,
    "callback_shape_top":top_shapes,
+   "gp106_constructor_top":top_ctor,
    "status_flow_present":bool(status),
    "slot_comparison_present":bool(slots),
  },
@@ -90,7 +102,9 @@ summary={
 lines=["# Pascal XP automated analysis summary",""]
 lines += [f"- XP descriptor-parent owners: {len(xp_po)}",f"- Win7 descriptor-parent owners: {len(w7_po)}",
           f"- XP FECS table-root owners: {len(xp_ro)}",f"- Win7 FECS table-root owners: {len(w7_ro)}",
-          f"- Ranked callback-shape pairs: {len(shape.get('ranked_pairs') or [])}",""]
+          f"- Ranked callback-shape pairs: {len(shape.get('ranked_pairs') or [])}",
+          f"- Ranked GP106-like constructor pairs: {len(ctor.get('ranked_pairs') or [])}",
+          f"- Actionable FECS-proximate constructor pairs: {len(ctor.get('top_actionable') or [])}",""]
 if next_actions:
     lines.append("## Next actions")
     for a in sorted(next_actions,key=lambda x:x["priority"]):
