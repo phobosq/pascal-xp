@@ -21,13 +21,31 @@ on:
         required: true
         default: '569106473'
 
+concurrency:
+  group: driver-analysis-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
   analyze:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: xp
+            project: xp_recipient
+            asset_env: XP_ASSET_ID
+            expected_name: nv4_mini.sys
+            driver_name: nv4_mini.sys
+          - platform: win7
+            project: win7_donor
+            asset_env: WIN7_ASSET_ID
+            expected_name: nvlddmkm.sys
+            driver_name: nvlddmkm.sys
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 35
     env:
       GH_TOKEN: ${{ secrets.CORPUS_TOKEN }}
       RELEASE_ID: ${{ inputs.release_id || '390358348' }}
@@ -35,16 +53,6 @@ jobs:
       WIN7_ASSET_ID: ${{ inputs.win7_asset_id || '569106473' }}
 
     steps:
-      - name: Verify corpus token is configured
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ -z "${GH_TOKEN:-}" ]]; then
-            echo "Missing repository secret CORPUS_TOKEN." >&2
-            exit 1
-          fi
-          echo "CORPUS_TOKEN is configured."
-
       - name: Checkout analysis code
         uses: actions/checkout@v4
 
@@ -52,50 +60,29 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: pip
 
       - name: Install Python dependencies
         run: python -m pip install -r requirements.txt
 
-      - name: Download corpus assets by fixed release/asset IDs
+      - name: Download selected corpus asset
         shell: bash
         run: |
           set -euo pipefail
+          test -n "${GH_TOKEN:-}"
           mkdir -p work/drivers work/reports
-          release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}")"
-          draft="$(printf '%s' "$release_json" | jq -r '.draft')"
-          if [[ "$draft" != "true" ]]; then
-            echo "Release ID ${RELEASE_ID} is not a draft release" >&2
-            exit 1
-          fi
-          printf '%s\n' "$release_json" | jq '{id, name, tag_name, draft, assets: [.assets[] | {id, name, size, digest}]}' > work/reports/corpus_release.json
-
-          download_asset_id() {
-            local asset_id="$1"
-            local expected_name="$2"
-            local out="$3"
-            local asset_json asset_name
-            asset_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}")"
-            asset_name="$(printf '%s' "$asset_json" | jq -r '.name')"
-            if [[ "$asset_name" != "$expected_name" ]]; then
-              echo "Asset ID ${asset_id} is ${asset_name}, expected ${expected_name}" >&2
-              exit 1
-            fi
-            gh api -H 'Accept: application/octet-stream' "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" > "$out"
-            test -s "$out"
-          }
-
-          download_asset_id "$XP_ASSET_ID" "nv4_mini.sys" work/drivers/nv4_mini.sys
-          download_asset_id "$WIN7_ASSET_ID" "nvlddmkm.sys" work/drivers/nvlddmkm.sys
-          sha256sum work/drivers/*.sys | tee work/reports/input_sha256.txt
-
-      - name: Static PE scans
-        shell: bash
-        run: |
-          set -euo pipefail
-          python scripts/scan_pe.py work/drivers/nv4_mini.sys --out work/reports/xp_pe.json
-          python scripts/scan_pe.py work/drivers/nvlddmkm.sys --out work/reports/win7_pe.json
-          python scripts/scan_pascal_firmware.py work/drivers/nv4_mini.sys --out work/reports/xp_firmware.json
-          python scripts/scan_pascal_firmware.py work/drivers/nvlddmkm.sys --out work/reports/win7_firmware.json
+          asset_id="${!ASSET_ENV}"
+          asset_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}")"
+          asset_name="$(printf '%s' "$asset_json" | jq -r '.name')"
+          test "$asset_name" = "$EXPECTED_NAME"
+          gh api -H 'Accept: application/octet-stream' "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" > "work/drivers/${DRIVER_NAME}"
+          test -s "work/drivers/${DRIVER_NAME}"
+          sha256sum "work/drivers/${DRIVER_NAME}" > "work/reports/${PLATFORM}_input_sha256.txt"
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          ASSET_ENV: ${{ matrix.asset_env }}
+          EXPECTED_NAME: ${{ matrix.expected_name }}
+          DRIVER_NAME: ${{ matrix.driver_name }}
 
       - name: Install Ghidra and PyGhidra
         shell: bash
@@ -104,166 +91,74 @@ jobs:
           mkdir -p work/tools
           release_json="$(gh api repos/NationalSecurityAgency/ghidra/releases/latest)"
           url="$(printf '%s' "$release_json" | jq -r '.assets[] | select(.name | endswith(".zip")) | .browser_download_url' | head -n1)"
-          if [[ -z "$url" || "$url" == "null" ]]; then
-            echo "Could not locate a Ghidra release ZIP" >&2
-            exit 1
-          fi
+          test -n "$url"
           curl -fL "$url" -o work/tools/ghidra.zip
           unzip -q work/tools/ghidra.zip -d work/tools
           ghidra_root="$(find work/tools -mindepth 1 -maxdepth 1 -type d -name 'ghidra_*' | head -n1)"
-          if [[ -z "$ghidra_root" ]]; then
-            echo "Ghidra root directory not found" >&2
-            exit 1
-          fi
           ghidra_root="$(realpath "$ghidra_root")"
           python -m venv work/tools/pyghidra-venv
-          work/tools/pyghidra-venv/bin/python -m pip install --upgrade pip
           work/tools/pyghidra-venv/bin/python -m pip install --no-index -f "$ghidra_root/Ghidra/Features/PyGhidra/pypkg/dist" pyghidra
-          work/tools/pyghidra-venv/bin/python -c "import pyghidra; print('PyGhidra import OK')"
           echo "GHIDRA_INSTALL_DIR=$ghidra_root" >> "$GITHUB_ENV"
           echo "PYGHIDRA_PYTHON=$GITHUB_WORKSPACE/work/tools/pyghidra-venv/bin/python" >> "$GITHUB_ENV"
 
-      - name: PyGhidra headless XP recipient
+      - name: Focused PyGhidra analysis
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p work/ghidra-projects
-          "$PYGHIDRA_PYTHON" -m pyghidra.ghidra_launch \
-            --install-dir "$GHIDRA_INSTALL_DIR" \
-            ghidra.app.util.headless.AnalyzeHeadless \
-            "$GITHUB_WORKSPACE/work/ghidra-projects" xp_recipient \
-            -import "$GITHUB_WORKSPACE/work/drivers/nv4_mini.sys" \
-            -scriptPath "$GITHUB_WORKSPACE/ghidra" \
-            -postScript ExportProgramFacts.py "$GITHUB_WORKSPACE/work/reports/xp_program_facts.json" \
-            -postScript ExportInterestingFunctionDetails.py "$GITHUB_WORKSPACE/work/reports/xp_interesting_function_details.json" \
-            -postScript ExportArchitectureGates.py "$GITHUB_WORKSPACE/work/reports/xp_architecture_gates.json" \
-            -postScript ExportDispatchConsumers.py "$GITHUB_WORKSPACE/work/reports/xp_dispatch_consumers.json" \
-            -postScript ExportFecsTrace.py "$GITHUB_WORKSPACE/work/reports/xp_fecs_trace.json" xp \
-            -postScript ExportFecsTables.py "$GITHUB_WORKSPACE/work/reports/xp_fecs_tables.json" xp \
-            -postScript ExportFecsSlotFunctions.py "$GITHUB_WORKSPACE/work/reports/xp_fecs_slots.json" xp \
-            -postScript ExportFecsStatusFlow.py "$GITHUB_WORKSPACE/work/reports/xp_fecs_status_flow.json" xp \
-            -postScript ExportFecsSlotAssignments.py "$GITHUB_WORKSPACE/work/reports/xp_fecs_slot_assignments.json" xp \
-            -postScript ExportFecsRegistrationOwners.py "$GITHUB_WORKSPACE/work/reports/xp_fecs_registration_owners.json" xp \
-            -postScript ExportFecsTableRoots.py "$GITHUB_WORKSPACE/work/reports/xp_fecs_table_roots.json" xp \
-            -postScript ExportFecsDescriptorParents.py "$GITHUB_WORKSPACE/work/reports/xp_fecs_descriptor_parents.json" xp \
-            -postScript ExportGp106ResourceWiring.py "$GITHUB_WORKSPACE/work/reports/xp_gp106_resource_wiring.json" xp \
-            -postScript ExportGp106ConstructorPatterns.py "$GITHUB_WORKSPACE/work/reports/xp_gp106_constructor_patterns.json" xp \
-            -postScript ExportGp106ConstructorOwnership.py "$GITHUB_WORKSPACE/work/reports/xp_gp106_constructor_patterns.json" "$GITHUB_WORKSPACE/work/reports/xp_gp106_constructor_ownership.json" xp \
-            -deleteProject
-          test -s work/reports/xp_program_facts.json
-          test -s work/reports/xp_interesting_function_details.json
-          test -s work/reports/xp_architecture_gates.json
-          test -s work/reports/xp_dispatch_consumers.json
-          test -s work/reports/xp_fecs_trace.json
-          test -s work/reports/xp_fecs_tables.json
-          test -s work/reports/xp_fecs_slots.json
-          test -s work/reports/xp_fecs_status_flow.json
-          test -s work/reports/xp_fecs_slot_assignments.json
-          test -s work/reports/xp_fecs_registration_owners.json
-          test -s work/reports/xp_fecs_table_roots.json
-          test -s work/reports/xp_fecs_descriptor_parents.json
-          test -s work/reports/xp_gp106_resource_wiring.json
-          test -s work/reports/xp_gp106_constructor_patterns.json
-          test -s work/reports/xp_gp106_constructor_ownership.json
+          "$PYGHIDRA_PYTHON" -m pyghidra.ghidra_launch             --install-dir "$GHIDRA_INSTALL_DIR"             ghidra.app.util.headless.AnalyzeHeadless             "$GITHUB_WORKSPACE/work/ghidra-projects" "$PROJECT"             -import "$GITHUB_WORKSPACE/work/drivers/$DRIVER_NAME"             -scriptPath "$GITHUB_WORKSPACE/ghidra"             -postScript ExportFecsTableRoots.py "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_fecs_table_roots.json" "$PLATFORM"             -postScript ExportFecsDescriptorParents.py "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_fecs_descriptor_parents.json" "$PLATFORM"             -postScript ExportGp106ResourceWiring.py "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_gp106_resource_wiring.json" "$PLATFORM"             -postScript ExportGp106ConstructorPatterns.py "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_gp106_constructor_patterns.json" "$PLATFORM"             -postScript ExportGp106ConstructorOwnership.py "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_gp106_constructor_patterns.json" "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_gp106_constructor_ownership.json" "$PLATFORM"             -deleteProject
+          test -s "work/reports/${PLATFORM}_fecs_table_roots.json"
+          test -s "work/reports/${PLATFORM}_fecs_descriptor_parents.json"
+          test -s "work/reports/${PLATFORM}_gp106_constructor_patterns.json"
+          test -s "work/reports/${PLATFORM}_gp106_constructor_ownership.json"
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          PROJECT: ${{ matrix.project }}
+          DRIVER_NAME: ${{ matrix.driver_name }}
 
-      - name: PyGhidra headless Win7 donor
+      - name: Remove proprietary input
+        if: always()
+        run: rm -rf work/drivers work/ghidra-projects work/tools
+
+      - name: Upload focused reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: focused-${{ matrix.platform }}-${{ github.run_number }}
+          path: work/reports/
+          if-no-files-found: error
+          retention-days: 14
+
+  compare:
+    needs: analyze
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout analysis code
+        uses: actions/checkout@v4
+
+      - name: Download focused reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: focused-*-${{ github.run_number }}
+          path: work/artifacts
+
+      - name: Merge and rank actionable targets
         shell: bash
         run: |
           set -euo pipefail
-          "$PYGHIDRA_PYTHON" -m pyghidra.ghidra_launch \
-            --install-dir "$GHIDRA_INSTALL_DIR" \
-            ghidra.app.util.headless.AnalyzeHeadless \
-            "$GITHUB_WORKSPACE/work/ghidra-projects" win7_donor \
-            -import "$GITHUB_WORKSPACE/work/drivers/nvlddmkm.sys" \
-            -scriptPath "$GITHUB_WORKSPACE/ghidra" \
-            -postScript ExportProgramFacts.py "$GITHUB_WORKSPACE/work/reports/win7_program_facts.json" \
-            -postScript ExportInterestingFunctionDetails.py "$GITHUB_WORKSPACE/work/reports/win7_interesting_function_details.json" \
-            -postScript ExportArchitectureGates.py "$GITHUB_WORKSPACE/work/reports/win7_architecture_gates.json" \
-            -postScript ExportDispatchConsumers.py "$GITHUB_WORKSPACE/work/reports/win7_dispatch_consumers.json" \
-            -postScript ExportFecsTrace.py "$GITHUB_WORKSPACE/work/reports/win7_fecs_trace.json" win7 \
-            -postScript ExportFecsTables.py "$GITHUB_WORKSPACE/work/reports/win7_fecs_tables.json" win7 \
-            -postScript ExportFecsSlotFunctions.py "$GITHUB_WORKSPACE/work/reports/win7_fecs_slots.json" win7 \
-            -postScript ExportFecsStatusFlow.py "$GITHUB_WORKSPACE/work/reports/win7_fecs_status_flow.json" win7 \
-            -postScript ExportFecsSlotAssignments.py "$GITHUB_WORKSPACE/work/reports/win7_fecs_slot_assignments.json" win7 \
-            -postScript ExportFecsRegistrationOwners.py "$GITHUB_WORKSPACE/work/reports/win7_fecs_registration_owners.json" win7 \
-            -postScript ExportFecsTableRoots.py "$GITHUB_WORKSPACE/work/reports/win7_fecs_table_roots.json" win7 \
-            -postScript ExportFecsDescriptorParents.py "$GITHUB_WORKSPACE/work/reports/win7_fecs_descriptor_parents.json" win7 \
-            -postScript ExportGp106ResourceWiring.py "$GITHUB_WORKSPACE/work/reports/win7_gp106_resource_wiring.json" win7 \
-            -postScript ExportGp106ConstructorPatterns.py "$GITHUB_WORKSPACE/work/reports/win7_gp106_constructor_patterns.json" win7 \
-            -postScript ExportGp106ConstructorOwnership.py "$GITHUB_WORKSPACE/work/reports/win7_gp106_constructor_patterns.json" "$GITHUB_WORKSPACE/work/reports/win7_gp106_constructor_ownership.json" win7 \
-            -deleteProject
-          test -s work/reports/win7_program_facts.json
-          test -s work/reports/win7_interesting_function_details.json
-          test -s work/reports/win7_architecture_gates.json
-          test -s work/reports/win7_dispatch_consumers.json
-          test -s work/reports/win7_fecs_trace.json
-          test -s work/reports/win7_fecs_tables.json
-          test -s work/reports/win7_fecs_slots.json
-          test -s work/reports/win7_fecs_status_flow.json
-          test -s work/reports/win7_fecs_slot_assignments.json
-          test -s work/reports/win7_fecs_registration_owners.json
-          test -s work/reports/win7_fecs_table_roots.json
-          test -s work/reports/win7_fecs_descriptor_parents.json
-          test -s work/reports/win7_gp106_resource_wiring.json
-          test -s work/reports/win7_gp106_constructor_patterns.json
-          test -s work/reports/win7_gp106_constructor_ownership.json
-
-      - name: Build comparison and candidate reports
-        shell: bash
-        run: |
-          set -euo pipefail
-          python scripts/compare_program_facts.py work/reports/xp_program_facts.json work/reports/win7_program_facts.json --out work/reports/xp_vs_win7_program_facts.json
-          python scripts/find_pascal_candidates.py work/reports/xp_program_facts.json --out work/reports/xp_pascal_candidates.json
-          python scripts/find_pascal_candidates.py work/reports/win7_program_facts.json --out work/reports/win7_pascal_candidates.json
-          python scripts/compare_fecs_status_flow.py work/reports/xp_fecs_status_flow.json work/reports/win7_fecs_status_flow.json --out work/reports/xp_vs_win7_fecs_status_flow.json
-          test -s work/reports/xp_vs_win7_fecs_status_flow.json
-          python scripts/compare_fecs_slot_assignments.py work/reports/xp_fecs_slot_assignments.json work/reports/win7_fecs_slot_assignments.json --out work/reports/xp_vs_win7_fecs_slot_assignments.json
-          test -s work/reports/xp_vs_win7_fecs_slot_assignments.json
-          python scripts/compare_fecs_callback_shapes.py work/reports/xp_fecs_slot_assignments.json work/reports/win7_fecs_slot_assignments.json work/reports/xp_program_facts.json work/reports/win7_program_facts.json --out work/reports/xp_vs_win7_callback_shapes.json
-          test -s work/reports/xp_vs_win7_callback_shapes.json
-          python scripts/compare_gp106_constructor_ownership.py \
-            --xp work/reports/xp_gp106_constructor_ownership.json \
-            --win7 work/reports/win7_gp106_constructor_ownership.json \
-            --xp-roots work/reports/xp_fecs_table_roots.json \
-            --win7-roots work/reports/win7_fecs_table_roots.json \
-            --xp-parents work/reports/xp_fecs_descriptor_parents.json \
-            --win7-parents work/reports/win7_fecs_descriptor_parents.json \
-            --out work/reports/xp_vs_win7_gp106_constructor_ownership.json
-          test -s work/reports/xp_vs_win7_gp106_constructor_ownership.json
+          mkdir -p work/reports
+          find work/artifacts -type f -name '*.json' -exec cp {} work/reports/ \;
+          python scripts/compare_gp106_constructor_ownership.py             --xp work/reports/xp_gp106_constructor_ownership.json             --win7 work/reports/win7_gp106_constructor_ownership.json             --xp-roots work/reports/xp_fecs_table_roots.json             --win7-roots work/reports/win7_fecs_table_roots.json             --xp-parents work/reports/xp_fecs_descriptor_parents.json             --win7-parents work/reports/win7_fecs_descriptor_parents.json             --out work/reports/xp_vs_win7_gp106_constructor_ownership.json
           python scripts/summarize_analysis.py
+          test -s work/reports/xp_vs_win7_gp106_constructor_ownership.json
           test -s work/reports/analysis_summary.json
           test -s work/reports/analysis_summary.md
 
-      - name: Build first GP106 dispatch-probe driver
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p work/probe-driver
-          python scripts/build_probe_driver.py \
-            work/drivers/nv4_mini.sys \
-            work/probe-driver/nv4_mini_gp106_as_gm206_probe.sys \
-            --manifest work/probe-driver/manifest.json
-          sha256sum work/probe-driver/*
-
-      - name: Remove proprietary input binaries before artifact upload
-        if: always()
-        shell: bash
-        run: rm -rf work/drivers work/ghidra-projects work/tools
-
-      - name: Upload analysis reports
-        if: always()
+      - name: Upload ranked analysis
         uses: actions/upload-artifact@v4
         with:
-          name: pascal-xp-36881-analysis-${{ github.run_number }}
+          name: pascal-xp-focused-analysis-${{ github.run_number }}
           path: work/reports/
-          if-no-files-found: warn
-          retention-days: 30
-
-      - name: Upload first GP106 dispatch-probe driver
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: nv4-mini-gp106-dispatch-probe-${{ github.run_number }}
-          path: work/probe-driver/
           if-no-files-found: error
           retention-days: 30
