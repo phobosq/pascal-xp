@@ -111,7 +111,8 @@ jobs:
           test -s "work/reports/${PLATFORM}_fecs_descriptor_parents.json"
           test -s "work/reports/${PLATFORM}_gp106_constructor_patterns.json"
           test -s "work/reports/${PLATFORM}_gp106_constructor_ownership.json"
-          test -s "work/reports/${PLATFORM}_focused_constructor_trace.json"\n          test -s "work/reports/${PLATFORM}_resource_override_wrappers.json"
+          test -s "work/reports/${PLATFORM}_focused_constructor_trace.json"
+          test -s "work/reports/${PLATFORM}_resource_override_wrappers.json"
         env:
           PLATFORM: ${{ matrix.platform }}
           PROJECT: ${{ matrix.project }}
