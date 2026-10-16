@@ -108,8 +108,14 @@ def analyze(entry,obj,dec):
     for r in refs:
         tf=r.get("target_function")
         if not tf or tf in seen or tf==entry: continue
+        if ":" in tf:
+            continue
+        try:
+            tfi=int(tf,16)
+        except ValueError:
+            continue
         seen.add(tf)
-        gfn=fn_at(currentProgram.getAddressFactory().getDefaultAddressSpace().getAddress(int(tf,16)))
+        gfn=fn_at(currentProgram.getAddressFactory().getDefaultAddressSpace().getAddress(tfi))
         if gfn:
             gs=getter_score(gfn)
             if gs["score"]>=4:
