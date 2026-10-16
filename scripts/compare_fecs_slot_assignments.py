@@ -12,7 +12,7 @@ from pathlib import Path
 SLOTS = (0x190, 0x1C8, 0x1D8, 0x1E8, 0x1F8)
 # Ghidra decompilation may render 0x190 as decimal 400.
 ASSIGN = re.compile(
-    r"\*\(code\s*\*\*\)\(param_\d+\s*\+\s*(0x[0-9a-fA-F]+|\d+)\)"
+    r"\*\((?:code|undefined[1248])\s*\*\*\)\(param_\d+\s*\+\s*(0x[0-9a-fA-F]+|\d+)\)"
     r"\s*=\s*(FUN_[0-9a-fA-F]+|&LAB_[0-9a-fA-F]+)"
 )
 
@@ -30,7 +30,7 @@ def describe(fn):
         "entry": fn["entry"],
         "size": int(fn["size"]),
         "writes": int(fn.get("writes", 0)),
-        "code_pointer_assignments": code.count("code **"),
+        "code_pointer_assignments": len(re.findall(r"(?:code|undefined[1248])\s*\*\*", code)),
         "slot_targets": targets,
         "matched_slot_count": active,
         "truncated_decompilation": bool(fn.get("decompilation_truncated")),
