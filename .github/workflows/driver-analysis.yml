@@ -143,6 +143,7 @@ jobs:
             -postScript ExportFecsSlotFunctions.py "$GITHUB_WORKSPACE/work/reports/xp_fecs_slots.json" xp \
             -postScript ExportFecsStatusFlow.py "$GITHUB_WORKSPACE/work/reports/xp_fecs_status_flow.json" xp \
             -postScript ExportFecsSlotAssignments.py "$GITHUB_WORKSPACE/work/reports/xp_fecs_slot_assignments.json" xp \
+            -postScript ExportFecsRegistrationOwners.py "$GITHUB_WORKSPACE/work/reports/xp_fecs_registration_owners.json" xp \
             -deleteProject
           test -s work/reports/xp_program_facts.json
           test -s work/reports/xp_interesting_function_details.json
@@ -153,6 +154,7 @@ jobs:
           test -s work/reports/xp_fecs_slots.json
           test -s work/reports/xp_fecs_status_flow.json
           test -s work/reports/xp_fecs_slot_assignments.json
+          test -s work/reports/xp_fecs_registration_owners.json
 
       - name: PyGhidra headless Win7 donor
         shell: bash
@@ -173,6 +175,7 @@ jobs:
             -postScript ExportFecsSlotFunctions.py "$GITHUB_WORKSPACE/work/reports/win7_fecs_slots.json" win7 \
             -postScript ExportFecsStatusFlow.py "$GITHUB_WORKSPACE/work/reports/win7_fecs_status_flow.json" win7 \
             -postScript ExportFecsSlotAssignments.py "$GITHUB_WORKSPACE/work/reports/win7_fecs_slot_assignments.json" win7 \
+            -postScript ExportFecsRegistrationOwners.py "$GITHUB_WORKSPACE/work/reports/win7_fecs_registration_owners.json" win7 \
             -deleteProject
           test -s work/reports/win7_program_facts.json
           test -s work/reports/win7_interesting_function_details.json
@@ -183,6 +186,7 @@ jobs:
           test -s work/reports/win7_fecs_slots.json
           test -s work/reports/win7_fecs_status_flow.json
           test -s work/reports/win7_fecs_slot_assignments.json
+          test -s work/reports/win7_fecs_registration_owners.json
 
       - name: Build comparison and candidate reports
         shell: bash
@@ -193,6 +197,10 @@ jobs:
           python scripts/find_pascal_candidates.py work/reports/win7_program_facts.json --out work/reports/win7_pascal_candidates.json
           python scripts/compare_fecs_status_flow.py work/reports/xp_fecs_status_flow.json work/reports/win7_fecs_status_flow.json --out work/reports/xp_vs_win7_fecs_status_flow.json
           test -s work/reports/xp_vs_win7_fecs_status_flow.json
+          python scripts/compare_fecs_slot_assignments.py work/reports/xp_fecs_slot_assignments.json work/reports/win7_fecs_slot_assignments.json --out work/reports/xp_vs_win7_fecs_slot_assignments.json
+          test -s work/reports/xp_vs_win7_fecs_slot_assignments.json
+          python scripts/compare_fecs_callback_shapes.py work/reports/xp_fecs_slot_assignments.json work/reports/win7_fecs_slot_assignments.json work/reports/xp_program_facts.json work/reports/win7_program_facts.json --out work/reports/xp_vs_win7_callback_shapes.json
+          test -s work/reports/xp_vs_win7_callback_shapes.json
 
       - name: Build first GP106 dispatch-probe driver
         shell: bash
