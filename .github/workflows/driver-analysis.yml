@@ -149,7 +149,7 @@ jobs:
           set -euo pipefail
           mkdir -p work/reports
           find work/artifacts -type f -name '*.json' -exec cp {} work/reports/ \;
-          python scripts/compare_gp106_constructor_ownership.py             --xp work/reports/xp_gp106_constructor_ownership.json             --win7 work/reports/win7_gp106_constructor_ownership.json             --xp-roots work/reports/xp_fecs_table_roots.json             --win7-roots work/reports/win7_fecs_table_roots.json             --xp-parents work/reports/xp_fecs_descriptor_parents.json             --win7-parents work/reports/win7_fecs_descriptor_parents.json             --out work/reports/xp_vs_win7_gp106_constructor_ownership.json
+          python scripts/compare_gp106_constructor_ownership.py             --xp work/reports/xp_gp106_constructor_ownership.json             --win7 work/reports/win7_gp106_constructor_ownership.json             --xp_roots work/reports/xp_fecs_table_roots.json             --win7_roots work/reports/win7_fecs_table_roots.json             --xp_parents work/reports/xp_fecs_descriptor_parents.json             --win7_parents work/reports/win7_fecs_descriptor_parents.json             --out work/reports/xp_vs_win7_gp106_constructor_ownership.json
           python scripts/summarize_analysis.py
           test -s work/reports/xp_vs_win7_gp106_constructor_ownership.json
           test -s work/reports/analysis_summary.json
