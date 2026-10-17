@@ -77,8 +77,10 @@ for a in xp.get("candidates",[]):
 pairs.sort(key=lambda x:(-x["score"],-(x["xp_fecs_proximity"]+x["win7_fecs_proximity"]),x["xp_entry"],x["win7_entry"]))
 out={"schema_version":1,"xp_fecs_owners":sorted(xo),"win7_fecs_owners":sorted(wo),
      "ranked_pairs":pairs[:250],
-     "top_actionable":[p for p in pairs if p["xp_fecs_proximity"] or p["win7_fecs_proximity"]][:40],
-     "caveat":"Ranking is structural/static evidence, not proof of GP106 runtime selection."}
+     "top_actionable":[],
+     "two_sided_proximity_hypotheses":[p for p in pairs if p["xp_fecs_proximity"] > 0 and p["win7_fecs_proximity"] > 0][:40],
+     "one_sided_proximity_hypotheses":[p for p in pairs if bool(p["xp_fecs_proximity"]) != bool(p["win7_fecs_proximity"])][:40],
+     "caveat":"Static proximity does not prove GP106 runtime selection or failure divergence."}
 Path(args.out).write_text(json.dumps(out,indent=2)+"\n")
 print(json.dumps({"pairs":len(pairs),"actionable":len(out["top_actionable"]),
                   "top":out["ranked_pairs"][:3]}))
