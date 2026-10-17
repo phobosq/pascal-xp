@@ -1,0 +1,215 @@
+{
+  "schema_version": 1,
+  "platforms": {
+    "xp": {
+      "dispatcher": "000554a0",
+      "dispatcher_registration_calls": [
+        "000eba40",
+        "000eba60",
+        "000eba80",
+        "000ebaa0",
+        "000ebac0",
+        "000ebae0",
+        "000ebb00",
+        "000ebb20",
+        "000ebb40",
+        "000ebb60",
+        "000ebb80",
+        "000ebba0",
+        "000ebbc0",
+        "000ebbe0",
+        "000ebc00",
+        "000ebc20",
+        "000ebc40",
+        "000ebc60",
+        "000ebc80",
+        "000ebca0",
+        "000ebcc0",
+        "000ebce0",
+        "000ebd00",
+        "000ebd20",
+        "000ebd40",
+        "000ebd60",
+        "000ebd80"
+      ],
+      "dispatcher_other_calls": [],
+      "upstream": [
+        "000555d0"
+      ],
+      "focus_addresses": [
+        "000555d0",
+        "000eba40",
+        "000eba60",
+        "000ebb20",
+        "000ebb40",
+        "000ebb60",
+        "000ebb80",
+        "000ebbc0",
+        "000ebbe0"
+      ]
+    },
+    "win7": {
+      "dispatcher": "001a9ed0",
+      "dispatcher_registration_calls": [
+        "00234c44",
+        "00234c58",
+        "00234c6c",
+        "00234c80",
+        "00234c94",
+        "00234ca8",
+        "00234cbc",
+        "00234cd0",
+        "00234ce4",
+        "00234cf8",
+        "00234d0c",
+        "00234d20",
+        "00234d34",
+        "00234d48",
+        "00234d5c",
+        "00234d70",
+        "00234d84",
+        "00234d98",
+        "00234dac",
+        "00234dc0",
+        "00234dd4",
+        "00234de8",
+        "00234dfc",
+        "00234e10",
+        "00234e24",
+        "00234e38",
+        "00234e4c"
+      ],
+      "dispatcher_other_calls": [
+        "001bd760",
+        "001bd9ec",
+        "001bda1c",
+        "001bda7c",
+        "001bda4c",
+        "001bdaac",
+        "001c40dc"
+      ],
+      "upstream": [
+        "002369c8"
+      ],
+      "focus_addresses": [
+        "001bd760",
+        "001bd9ec",
+        "001bda1c",
+        "001bda4c",
+        "001bda7c",
+        "001bdaac",
+        "001c40dc",
+        "00234dfc",
+        "00234e10",
+        "00234e4c",
+        "002369c8"
+      ]
+    }
+  },
+  "predictions": [
+    {
+      "observed_platform": "xp",
+      "observed_index": "0x34",
+      "observed_wrapper": "000ebd00",
+      "predicted_other_wrapper": "00234dfc",
+      "other_dispatcher_calls_target": true,
+      "predicted_other_header": "00654730",
+      "semantics_confirmed": false
+    },
+    {
+      "observed_platform": "xp",
+      "observed_index": "0x36",
+      "observed_wrapper": "000ebd20",
+      "predicted_other_wrapper": "00234e10",
+      "other_dispatcher_calls_target": true,
+      "predicted_other_header": "006549c0",
+      "semantics_confirmed": false
+    },
+    {
+      "observed_platform": "xp",
+      "observed_index": "0x3a",
+      "observed_wrapper": "000ebd80",
+      "predicted_other_wrapper": "00234e4c",
+      "other_dispatcher_calls_target": true,
+      "predicted_other_header": "00655170",
+      "semantics_confirmed": false
+    },
+    {
+      "observed_platform": "win7",
+      "observed_index": "0x17",
+      "observed_wrapper": "00234c44",
+      "predicted_other_wrapper": "000eba40",
+      "other_dispatcher_calls_target": true,
+      "predicted_other_header": "008441d0",
+      "semantics_confirmed": false
+    },
+    {
+      "observed_platform": "win7",
+      "observed_index": "0x18",
+      "observed_wrapper": "00234c58",
+      "predicted_other_wrapper": "000eba60",
+      "other_dispatcher_calls_target": true,
+      "predicted_other_header": "00844460",
+      "semantics_confirmed": false
+    },
+    {
+      "observed_platform": "win7",
+      "observed_index": "0x20",
+      "observed_wrapper": "00234cd0",
+      "predicted_other_wrapper": "000ebb20",
+      "other_dispatcher_calls_target": true,
+      "predicted_other_header": "008453c0",
+      "semantics_confirmed": false
+    },
+    {
+      "observed_platform": "win7",
+      "observed_index": "0x22",
+      "observed_wrapper": "00234ce4",
+      "predicted_other_wrapper": "000ebb40",
+      "other_dispatcher_calls_target": true,
+      "predicted_other_header": "00845650",
+      "semantics_confirmed": false
+    },
+    {
+      "observed_platform": "win7",
+      "observed_index": "0x26",
+      "observed_wrapper": "00234cf8",
+      "predicted_other_wrapper": "000ebb60",
+      "other_dispatcher_calls_target": true,
+      "predicted_other_header": "008458e0",
+      "semantics_confirmed": false
+    },
+    {
+      "observed_platform": "win7",
+      "observed_index": "0x27",
+      "observed_wrapper": "00234d0c",
+      "predicted_other_wrapper": "000ebb80",
+      "other_dispatcher_calls_target": true,
+      "predicted_other_header": "00845b70",
+      "semantics_confirmed": false
+    },
+    {
+      "observed_platform": "win7",
+      "observed_index": "0x2a",
+      "observed_wrapper": "00234d34",
+      "predicted_other_wrapper": "000ebbc0",
+      "other_dispatcher_calls_target": true,
+      "predicted_other_header": "00846090",
+      "semantics_confirmed": false
+    },
+    {
+      "observed_platform": "win7",
+      "observed_index": "0x2b",
+      "observed_wrapper": "00234d48",
+      "predicted_other_wrapper": "000ebbe0",
+      "other_dispatcher_calls_target": true,
+      "predicted_other_header": "00846320",
+      "semantics_confirmed": false
+    }
+  ],
+  "caveat": "Counterpart addresses are hypotheses; decompilation must verify index, descriptor and runtime class selection.",
+  "input_sha256": {
+    "xp": "cdb1f92a62fe4f36d9121d27fedd741c9a2c044df79d09dccd4fa492c80ca733",
+    "win7": "629b14222fdaecc294d2d8fa372ce0ad6f76bbde13b6b4168977ef6e30d22562"
+  }
+}
