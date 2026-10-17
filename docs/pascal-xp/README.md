@@ -13,6 +13,7 @@ Historical research notes from 17 October 2026 for [phobosq/pascal-xp](https://g
 | Driver analysis generated summary | [#113](https://github.com/phobosq/pascal-xp/actions/runs/39055673968) | [Analysis summary](2026-10-17-run113-analysis-summary.md) |
 | Win7 GPU init status paths 0x2F, 0x40, 0x51 | #113 | [Status paths](2026-10-17-run113-status-2f-40-51.md) |
 | Win7 guards, GPU index wrappers and ownership state | [#115](https://github.com/phobosq/pascal-xp/actions/runs/39064593635), [#116](https://github.com/phobosq/pascal-xp/actions/runs/39066013310) | [Guard/index analysis](2026-10-17-run115-116-guard-and-index-analysis.md) |
+| GPU-slot owner bitmap and registry ranking audit | [#119](https://github.com/phobosq/pascal-xp/actions/runs/39070773238) | [GPU-slot ownership](2026-10-17-run119-gpu-slot-ownership.md) |
 | Independent analysis of a **modified XP probe**, not the original input | Separate local examination | [Probe analysis](2026-10-17-modified-xp-probe.md) |
 
 ## Important chronological corrections
