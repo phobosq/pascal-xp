@@ -30,6 +30,15 @@
         "00234e10",
         "00234e4c",
         "002369c8"
+      ],
+      "dispatcher_other_calls": [
+        "001bd760",
+        "001bd9ec",
+        "001bda1c",
+        "001bda4c",
+        "001bda7c",
+        "001bdaac",
+        "001c40dc"
       ]
     }
   },
