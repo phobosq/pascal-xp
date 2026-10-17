@@ -12,6 +12,22 @@ def fields(row):
     idx,ptr=matches[0];m=ADDRESS_SUFFIX.search(ptr)
     return {'status':'registration','index':int(idx,0),'pointer_symbol':ptr,
             'pointer_address':m.group(1).lower().zfill(8) if m else None}
+def classify_entry_path(xp_rows,win7_rows):
+    xp=next((r for r in xp_rows if r.get('entry','').lower()=='000555d0'),{})
+    w7=next((r for r in win7_rows if r.get('entry','').lower()=='002369c8'),{})
+    xp_code=xp.get('decompilation') or ''
+    w7_code=w7.get('decompilation') or ''
+    direct=bool(re.search(r'\bFUN_000554a0\s*\(',xp_code))
+    install=bool(re.search(r'\*\s*\(code\s*\*\*\)\s*\(param_1\s*\+\s*0x4c8\)\s*=\s*FUN_001a9ed0',w7_code))
+    return {
+      'xp':{'entry':'000555d0','kind':'direct_registration_caller' if direct else 'unclassified_registration_entry',
+            'evidence':'direct call to 000554a0' if direct else 'direct call not confirmed'},
+      'win7':{'entry':'002369c8','kind':'registration_callback_installer' if install else 'unclassified_registration_entry',
+              'callback_slot_offset':'0x4c8' if install else None,
+              'callback_target':'001a9ed0' if install else None,
+              'evidence':'stores dispatcher 001a9ed0 at param_1+0x4c8, not direct call' if install else 'callback slot not confirmed'},
+      'runtime_gp106_selection_proven':False
+    }
 def compare(manifest,xp,win7):
     lookup={p:{r['entry'].lower():r for r in d.get('targets',[])} for p,d in [('xp',xp),('win7',win7)]}
     rows=[]
@@ -47,7 +63,7 @@ def compare(manifest,xp,win7):
             'matched_indices':sum(r['index_matches'] is True for r in rows),
             'matched_header_pointers':sum(r['header_pointer_matches'] is True for r in rows),
             'unresolved_counterparts':[r['counterpart'] for r in rows if r['index_matches'] is not True or r['header_pointer_matches'] is not True],
-            'win7_epilogue_helpers':helpers,'runtime_gp106_selection_proven':False,'patch_candidate':False,
+            'win7_epilogue_helpers':helpers,'registration_entry_path':classify_entry_path(xp.get('targets',[]),win7.get('targets',[])),'runtime_gp106_selection_proven':False,'patch_candidate':False,
             'caveat':'Matching indices/header pointers is static evidence, not descriptor identity or GP106 runtime selection.'}
 def main():
     p=argparse.ArgumentParser()
