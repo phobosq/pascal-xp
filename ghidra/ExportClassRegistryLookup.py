@@ -86,7 +86,7 @@ for row in root_out:
     if len(children)>=MAX_CHILDREN:break
 
 # Direct global references plus one bounded hop through registry callees.
-state={}
+registry_global_refs={}
 origins=[('registry',root_out)]+[(c['entry'],c.get('outgoing',[]))
                                 for c in children]
 for origin,refs in origins:
@@ -95,12 +95,12 @@ for origin,refs in origins:
         if row['call'] or not sec or sec in ('.text','.pdata'):
             continue
         key=row['target']
-        if key not in state and len(state)>=MAX_STATE_GLOBALS:continue
-        state.setdefault(key,{'address':key,'section':sec,
+        if key not in registry_global_refs and len(registry_global_refs)>=MAX_STATE_GLOBALS:continue
+        registry_global_refs.setdefault(key,{'address':key,'section':sec,
                                'producers':[],'references':[]})['producers'].append(
             {'entry':origin,'source':row['source'],'type':row['type']})
 candidates={}
-for key,value in sorted(state.items()):
+for key,value in sorted(registry_global_refs.items()):
     references=inbound(addr(key),MAX_GLOBAL_XREFS)
     value['references']=references
     for ref in references:
@@ -127,11 +127,11 @@ with open(output,'w') as fp:
            'outgoing':root_out,
            'analysis':root_analysis},
        'direct_callees':children,
-       'candidate_global_references':list(state.values()),
+       'candidate_global_references':list(registry_global_refs.values()),
        'ranked_lookup_candidates':ranked,
        'runtime_gp106_selection_proven':False,
        'patch_candidate':False,
        'caveat':'Static bounded xrefs only. Reads do not prove GP106 runtime selection.'},
        fp,indent=2)
 print('registry %s: callees=%d state=%d candidates=%d'%(
-      platform,len(children),len(state),len(ranked)))
+      platform,len(children),len(registry_global_refs),len(ranked)))
