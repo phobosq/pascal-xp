@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "platforms": {
+    "xp": {
+      "focus_addresses": [
+        "000555d0",
+        "000ebd00",
+        "000ebd20",
+        "000ebd80"
+      ]
+    },
+    "win7": {
+      "focus_addresses": [
+        "002369c8",
+        "00234dfc",
+        "00234e10",
+        "00234e4c",
+        "001bd760",
+        "001bd9ec",
+        "001bda1c",
+        "001bda7c",
+        "001bda4c",
+        "001bdaac",
+        "001c40dc"
+      ]
+    }
+  },
+  "caveat": "Fixed RVAs for XP/Win7 368.81 only; verify binary hashes before use; static xrefs do not prove GP106 runtime selection."
+}
