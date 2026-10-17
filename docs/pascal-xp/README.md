@@ -12,6 +12,7 @@ Historical research notes from 17 October 2026 for [phobosq/pascal-xp](https://g
 | NVIDIA vendor enumeration and PCI ID false positives | #112 | [PCI vendor parity](2026-10-17-run112-pci-vendor.md) |
 | Driver analysis generated summary | [#113](https://github.com/phobosq/pascal-xp/actions/runs/39055673968) | [Analysis summary](2026-10-17-run113-analysis-summary.md) |
 | Win7 GPU init status paths 0x2F, 0x40, 0x51 | #113 | [Status paths](2026-10-17-run113-status-2f-40-51.md) |
+| Win7 guards, GPU index wrappers and ownership state | [#115](https://github.com/phobosq/pascal-xp/actions/runs/39064593635), [#116](https://github.com/phobosq/pascal-xp/actions/runs/39066013310) | [Guard/index analysis](2026-10-17-run115-116-guard-and-index-analysis.md) |
 | Independent analysis of a **modified XP probe**, not the original input | Separate local examination | [Probe analysis](2026-10-17-modified-xp-probe.md) |
 
 ## Important chronological corrections
@@ -27,3 +28,8 @@ Historical research notes from 17 October 2026 for [phobosq/pascal-xp](https://g
 - Windows 7 `nvlddmkm.sys`: SHA-256 `629b14222fdaecc294d2d8fa372ce0ad6f76bbde13b6b4168977ef6e30d22562`.
 
 The GitHub Actions source of truth is the [Driver analysis workflow](https://github.com/phobosq/pascal-xp/blob/main/.github/workflows/driver-analysis.yml).
+
+## Reporting workflow
+
+- Commit each completed investigation report to `docs/pascal-xp/` and link it from this index; include the source Driver analysis run and clearly mark unproven hypotheses.
+- If a GitHub write is blocked, provide the user with an exact, applicable unified diff and file path rather than only reporting the blocker. Do not attempt to circumvent safety checks.
