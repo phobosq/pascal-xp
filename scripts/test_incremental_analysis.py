@@ -32,7 +32,9 @@ class IncrementalTests(unittest.TestCase):
             for i in range(9)]
         (self.root / 'scripts/driver_analysis_plan.json').write_text(json.dumps(self.plan))
         (self.root / 'scripts/registration_followup_manifest.json').write_text(
-            json.dumps({'input_sha256': {'xp': 'a'*64, 'win7': 'b'*64}}))
+            json.dumps({'input_sha256': {'xp': 'a'*64, 'win7': 'b'*64},
+                        'platforms': {'xp': {'focus_addresses': ['0001']},
+                                      'win7': {'focus_addresses': []}}}))
         for e in self.plan['exporters']:
             (self.root / 'ghidra' / e['script']).write_text('script\n')
         self.sigs = signatures('xp', '1', '2', self.root)
