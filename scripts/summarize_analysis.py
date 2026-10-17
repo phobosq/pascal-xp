@@ -158,9 +158,9 @@ lines += [f"- XP descriptor-parent owners: {len(xp_po)}",f"- Win7 descriptor-par
           f"- XP sampled FECS-root initializer/data links: {len(xp_fecs_tables.get('initializer_data_links', []))}",
           f"- Win7 sampled FECS-root initializer/data links: {len(win7_fecs_tables.get('initializer_data_links', []))}",
           f"- XP registry candidate lookup consumers: {registry.get('xp', {}).get('candidate_consumer_count', 0)}",
-          f"- XP registry global dispatch candidates: {len(registry_consumers.get('xp', {}).get('positive_candidates', []))}",
-          f"- XP NEW registry lookup candidates: {len(registry_new_candidates['xp'])}"
-          f"- Win7 registry global dispatch candidates: {len(registry_consumers.get('win7', {}).get('positive_candidates', []))}",
+          f"- XP registry global dispatch candidates (including known registration): {len(registry_consumers.get('xp', {}).get('positive_candidates', []))}",
+          f"- XP NEW registry lookup candidates: {len(registry_new_candidates['xp'])}",
+          f"- Win7 registry global dispatch candidates (including known registration): {len(registry_consumers.get('win7', {}).get('positive_candidates', []))}",
           f"- Win7 registry candidate lookup consumers: {registry.get('win7', {}).get('candidate_consumer_count', 0)}",
           f"- Win7 NEW registry lookup candidates: {len(registry_new_candidates['win7'])}",
           f"- Registration index/header matches: {registration.get('matched_indices', 0)}/{registration.get('total_counterparts', 0)}",
