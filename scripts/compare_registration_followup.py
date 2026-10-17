@@ -29,9 +29,19 @@ def compare(manifest,xp,win7):
     helpers=[]
     for entry in manifest['platforms']['win7']['dispatcher_other_calls']:
         row=lookup['win7'].get(entry.lower())
+        code=(row or {}).get('decompilation') or ''
+        if 'RtlGetVersion' in code:
+            semantic='os_version_probe'
+        elif 'MmGetSystemRoutineAddress' in code and ('KeQuery' in code or 'KeGetCurrentProcessorNumberEx' in code or 'KeSetSystemGroupAffinityThread' in code):
+            semantic='processor_group_api_resolver'
+        elif entry.lower()=='001c40dc' and 'DAT_007e4ec0' in code:
+            semantic='global_state_init'
+        else:
+            semantic='unclassified'
         helpers.append({'entry':entry,'status':row.get('status') if row else 'not_exported',
                         'size':row.get('size') if row else None,
-                        'decompilation_available':bool(row and row.get('decompilation')),
+                        'decompilation_available':bool(code),
+                        'semantic_class':semantic,
                         'outgoing_calls':sum('CALL' in r.get('type','').upper() for r in (row or {}).get('outgoing',[]))})
     return {'schema_version':2,'counterparts':rows,'total_counterparts':len(rows),
             'matched_indices':sum(r['index_matches'] is True for r in rows),
