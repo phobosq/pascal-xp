@@ -17,6 +17,8 @@ status=load("xp_vs_win7_fecs_status_flow.json")
 ctor=load("xp_vs_win7_gp106_constructor_ownership.json")
 chains=load("xp_vs_win7_descriptor_owner_chains.json")
 sec2=load("sec2_wrapper_audit.json")
+lifecycle=load("registration_lifecycle_audit.json")
+registration=load("xp_vs_win7_registration_followup.json")
 
 def unique_owners(obj):
     out=set()
@@ -97,6 +99,8 @@ summary={
    "gp106_constructor_top":top_ctor,
    "descriptor_header_owner_ranking":unmatched[:10],
    "sec2_wrapper_audit":sec2,
+   "registration_lifecycle_audit":lifecycle,
+   "registration_counterparts":registration,
    "status_flow_present":bool(status),
    "slot_comparison_present":bool(slots),
  },
@@ -116,6 +120,9 @@ lines += [f"- XP descriptor-parent owners: {len(xp_po)}",f"- Win7 descriptor-par
           f"- Ranked GP106-like constructor pairs: {len(ctor.get('ranked_pairs') or [])}",
           f"- Descriptor owner chains ranked: {len(unmatched)}",
           f"- SEC2 audit classification: {sec2.get('semantic_classification', 'not available')}",
+          f"- Registration index/header matches: {registration.get('matched_indices', 0)}/{registration.get('total_counterparts', 0)}",
+          f"- Registration callback slot +0x4c8 parity: {lifecycle.get('callback_slot_parity_confirmed', False)}",
+          f"- Seven OS helper semantics paired XP/Win7: {lifecycle.get('post_registration', {}).get('semantic_parity_confirmed', False)}",
           f"- Confirmed actionable constructor pairs: {len(ctor.get('top_actionable') or [])}",
           f"- Two-sided static proximity hypotheses: {len(ctor.get('two_sided_proximity_hypotheses') or [])}",
           f"- One-sided static proximity hypotheses: {len(ctor.get('one_sided_proximity_hypotheses') or [])}",""]
