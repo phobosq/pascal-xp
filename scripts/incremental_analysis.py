@@ -143,6 +143,8 @@ def build_argv(platform, plan_path, root=Path('.'), reports_dir=Path('work/repor
                 tokens.append(base + '/' + report_name(platform, row['id']))
             elif arg == '{platform}':
                 tokens.append(platform)
+            elif arg == '{selection}':
+                tokens.append(str(Path('work/rva/selection.json').resolve()))
             elif arg == '{manifest}':
                 tokens.append(str((Path(root) / 'scripts/registration_followup_manifest.json').resolve()))
             elif arg.startswith('{report:') and arg.endswith('}'):

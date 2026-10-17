@@ -85,7 +85,8 @@
       "args": [
         "{manifest}",
         "{out}",
-        "{platform}"
+        "{platform}",
+        "{selection}"
       ],
       "depends_on": []
     },

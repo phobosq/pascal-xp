@@ -32,6 +32,8 @@ The GitHub Actions source of truth is the [Driver analysis workflow](https://git
 
 ## Incremental CI
 
+- [Phase 3: per-RVA registration follow-up cache](incremental-rva.md) — reuse bounded function records, merge exact output ordering.
+
 - [Per-exporter incremental cache, dependencies, and on-demand Ghidra exporters](incremental-exporters.md) — phase 2.
 
 - [Validated XP/Win7 report cache and compare-only mode](incremental-analysis.md) — fingerprinting, validation and fallback.

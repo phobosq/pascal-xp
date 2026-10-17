@@ -11,3 +11,8 @@ GitHub immutable cache key is derived from all exporter fingerprints. On a new k
 For safety and reproducibility, corrupted reusable cached data fails closed rather than being silently consumed. Cache is not an authoritative origin guarantee; only trusted workflows may create it. Caches may be evicted, resulting in a cold rebuild. GitHub cache scope and visibility rules still apply. The prior phase-1 cache prefix is separate, so first phase-2 run creates a new v2 bundle.
 
 CI runs self-contained tests for cache hit/miss, dependency invalidation, corrupt checksums, manifest changes, platform isolation, deterministic argv generation, and whitelist enforcement. This phase does **not** yet cache individual RVA decompilations or full Ghidra project databases. Driver and firmware binaries remain excluded.
+
+
+## Phase 3: individual registration RVAs
+
+See [incremental-rva.md](incremental-rva.md) for bounded per-RVA selection and deterministic merge, provenance checks, and retry rules for failed decompilations.

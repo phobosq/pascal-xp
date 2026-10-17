@@ -18,3 +18,4 @@ jobs:
       - run: python -m unittest discover -s scripts -p 'test_registry_global_consumers.py' -v
       - run: python -m unittest discover -s scripts -p 'test_analysis_cache.py' -v
       - run: python -m unittest discover -s scripts -p 'test_incremental_analysis.py' -v
+      - run: python -m unittest discover -s scripts -p 'test_registration_rva_cache.py' -v

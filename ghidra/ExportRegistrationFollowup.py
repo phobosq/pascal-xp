@@ -4,11 +4,21 @@ import json
 from ghidra.app.decompiler import DecompInterface
 
 args = getScriptArgs()
-if len(args) != 3 or args[2] not in ('xp','win7'):
-    raise ValueError('expected manifest.json output.json xp|win7')
+if len(args) not in (3,4) or args[2] not in ('xp','win7'):
+    raise ValueError('expected manifest.json output.json xp|win7 [selection.json]')
 manifest_path, output_path, platform = args
 manifest = json.load(open(manifest_path))
 entries = manifest['platforms'][platform]['focus_addresses']
+if len(args) == 4:
+    selection = json.load(open(args[3]))
+    if selection.get('platform') != platform:
+        raise ValueError('RVA selection platform mismatch')
+    wanted = selection.get('focus_addresses')
+    if not isinstance(wanted, list) or len(wanted) != len(set(wanted)):
+        raise ValueError('invalid RVA selection')
+    if any(entry not in entries for entry in wanted):
+        raise ValueError('RVA selection outside manifest')
+    entries = wanted
 space = currentProgram.getAddressFactory().getDefaultAddressSpace()
 mem = currentProgram.getMemory()
 listing = currentProgram.getListing()

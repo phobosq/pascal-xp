@@ -101,20 +101,30 @@ jobs:
           PLATFORM: ${{ matrix.platform }}
           ASSET_ENV: ${{ matrix.asset_env }}
 
+      - name: Select changed registration RVAs
+        id: prepare-rva
+        shell: bash
+        run: |
+          asset_id="${!ASSET_ENV}"
+          python scripts/registration_rva_cache.py prepare --platform "$PLATFORM" --release-id "$RELEASE_ID" --asset-id "$asset_id" --cache-dir "work/cache/$PLATFORM" --reports-dir work/reports --plan work/exporters-plan.json --seed work/rva/seed.json --selection work/rva/selection.json
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          ASSET_ENV: ${{ matrix.asset_env }}
+
       - name: Reject incomplete exact cache hits
-        if: steps.report-cache.outputs.cache-hit == 'true' && steps.prepare-reports.outputs.need_ghidra == 'true'
+        if: steps.report-cache.outputs.cache-hit == 'true' && steps.prepare-rva.outputs.need_ghidra == 'true'
         run: |
           echo "::error::Exact cache key matched but reports are incomplete. Delete the affected cache entry."
           exit 1
 
       - name: Require complete cache in compare-only mode
-        if: inputs.analysis_mode == 'compare-only' && steps.prepare-reports.outputs.need_ghidra == 'true'
+        if: inputs.analysis_mode == 'compare-only' && steps.prepare-rva.outputs.need_ghidra == 'true'
         run: |
           echo "::error::Compare-only requires all twelve validated exporter reports per platform."
           exit 1
 
       - name: Download selected corpus asset
-        if: steps.prepare-reports.outputs.need_ghidra == 'true' && inputs.analysis_mode != 'compare-only'
+        if: steps.prepare-rva.outputs.need_ghidra == 'true' && inputs.analysis_mode != 'compare-only'
         shell: bash
         run: |
           set -euo pipefail
@@ -135,7 +145,7 @@ jobs:
           DRIVER_NAME: ${{ matrix.driver_name }}
 
       - name: Install Ghidra and PyGhidra
-        if: steps.prepare-reports.outputs.need_ghidra == 'true' && inputs.analysis_mode != 'compare-only'
+        if: steps.prepare-rva.outputs.need_ghidra == 'true' && inputs.analysis_mode != 'compare-only'
         shell: bash
         run: |
           set -euo pipefail
@@ -151,7 +161,7 @@ jobs:
           echo "PYGHIDRA_PYTHON=$GITHUB_WORKSPACE/work/tools/pyghidra-venv/bin/python" >> "$GITHUB_ENV"
 
       - name: Focused PyGhidra analysis
-        if: steps.prepare-reports.outputs.need_ghidra == 'true' && inputs.analysis_mode != 'compare-only'
+        if: steps.prepare-rva.outputs.need_ghidra == 'true' && inputs.analysis_mode != 'compare-only'
         shell: bash
         run: |
           set -euo pipefail
@@ -178,17 +188,28 @@ jobs:
           DRIVER_NAME: ${{ matrix.driver_name }}
           ASSET_ENV: ${{ matrix.asset_env }}
 
+      - name: Merge reused and newly exported registration RVAs
+        if: steps.prepare-rva.outputs.has_delta == 'true' && inputs.analysis_mode != 'compare-only'
+        shell: bash
+        run: |
+          asset_id="${!ASSET_ENV}"
+          python scripts/registration_rva_cache.py merge --platform "$PLATFORM" --release-id "$RELEASE_ID" --asset-id "$asset_id" --reports-dir work/reports --seed work/rva/seed.json
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          ASSET_ENV: ${{ matrix.asset_env }}
+
       - name: Stage validated new report cache
-        if: steps.prepare-reports.outputs.need_ghidra == 'true' && inputs.analysis_mode != 'compare-only'
+        if: steps.prepare-rva.outputs.needs_seal == 'true' && inputs.analysis_mode != 'compare-only'
         run: |
           asset_id="${!ASSET_ENV}"
           python scripts/incremental_analysis.py seal --platform "$PLATFORM" --release-id "$RELEASE_ID" --asset-id "$asset_id" --cache-dir "work/cache/$PLATFORM" --reports-dir work/reports
+          python scripts/registration_rva_cache.py stamp --platform "$PLATFORM" --release-id "$RELEASE_ID" --asset-id "$asset_id" --cache-dir "work/cache/$PLATFORM" --reports-dir work/reports
         env:
           PLATFORM: ${{ matrix.platform }}
           ASSET_ENV: ${{ matrix.asset_env }}
 
       - name: Save complete report cache
-        if: steps.prepare-reports.outputs.need_ghidra == 'true' && inputs.analysis_mode != 'compare-only'
+        if: steps.prepare-rva.outputs.needs_seal == 'true' && inputs.analysis_mode != 'compare-only'
         uses: actions/cache/save@v4
         with:
           path: work/cache/${{ matrix.platform }}
