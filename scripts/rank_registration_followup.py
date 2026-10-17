@@ -7,10 +7,13 @@ def rank(manifest,helper_report):
     targets=[]
     for p in manifest['predictions']:
         dst='win7' if p['observed_platform']=='xp' else 'xp'
-        targets.append({'priority':1,'platform':dst,'entry':p['predicted_other_wrapper'],
-                        'kind':'counterpart_registration_wrapper',
-                        'question':'Does decompilation confirm same index and descriptor pointer?',
-                        'evidence':'dispatcher CALL target present; semantics unverified'})
+        counterpart = next((r for r in helper_report.get('counterparts',[])
+                            if r.get('counterpart') == p['predicted_other_wrapper']), {})
+        verified = counterpart.get('index_matches') is True and counterpart.get('header_pointer_matches') is True
+        targets.append({'priority':6 if verified else 1,'platform':dst,'entry':p['predicted_other_wrapper'],
+                        'kind':'static_registration_wrapper_confirmed' if verified else 'counterpart_registration_wrapper',
+                        'question':'Trace runtime GPU class selection' if verified else 'Confirm index and descriptor pointer',
+                        'evidence':'index/header pointer matched statically; runtime unverified' if verified else 'dispatcher CALL target present; semantics unverified'})
     for platform,entry in [('xp','000555d0'),('win7','002369c8')]:
         targets.append({'priority':2,'platform':platform,'entry':entry,'kind':'registration_upstream',
                         'question':'Does caller perform equivalent OS or GR initialization?',
