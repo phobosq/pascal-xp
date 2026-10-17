@@ -3,7 +3,7 @@
 import argparse,json
 from pathlib import Path
 def rank(manifest,helper_report):
-    helpers={r.get('entry'):r for r in helper_report.get('callers',[])}
+    helpers={r.get('entry'):r for r in helper_report.get('win7_epilogue_helpers',[])}
     targets=[]
     for p in manifest['predictions']:
         dst='win7' if p['observed_platform']=='xp' else 'xp'
@@ -16,11 +16,12 @@ def rank(manifest,helper_report):
                         'question':'Does caller perform equivalent OS or GR initialization?',
                         'evidence':'static reference, not runtime selection proof'})
     for entry in manifest['platforms']['win7']['dispatcher_other_calls']:
-        code=(helpers.get(entry) or {}).get('decompilation') or ''
-        if entry=='001bd760' and 'RtlGetVersion' in code and '0x11c' in code:
-            kind='os_version_probe';priority=4
-            question='Find homologous XP OS-version initialization elsewhere.'
-            evidence='RtlGetVersion and 0x11c version buffer; not FECS-specific'
+        h=helpers.get(entry) or {}
+        semantic=h.get('semantic_class','unclassified')
+        if semantic in ('os_version_probe','processor_group_api_resolver','global_state_init'):
+            kind=semantic;priority=5
+            question='No GPU follow-up unless later evidence links this OS glue to GP106 selection.'
+            evidence='classified by focused decompilation as Windows compatibility/global initialization'
         else:
             kind='unclassified_epilogue_helper';priority=3
             question='Identify side effects and OS/GR relevance.'
@@ -29,7 +30,7 @@ def rank(manifest,helper_report):
                         'question':question,'evidence':evidence})
     targets.sort(key=lambda x:(x['priority'],x['platform'],x['entry']))
     return {'schema_version':1,'ranked_targets':targets,
-            'known_non_fecs_epilogue':[x['entry'] for x in targets if x['kind']=='os_version_probe'],
+            'known_non_fecs_epilogue':[x['entry'] for x in targets if x['kind'] in ('os_version_probe','processor_group_api_resolver','global_state_init')],
             'gp106_runtime_selection_proven':False,'patch_candidate':False,
             'caveat':'OS-version helper is not FECS divergence. Remaining helpers require decompilation.'}
 def main():
