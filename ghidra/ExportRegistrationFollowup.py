@@ -6,7 +6,7 @@ from ghidra.app.decompiler import DecompInterface
 args = getScriptArgs()
 if len(args) not in (3,4) or args[2] not in ('xp','win7'):
     raise ValueError('expected manifest.json output.json xp|win7 [selection.json]')
-manifest_path, output_path, platform = args
+manifest_path, output_path, platform = args[:3]
 manifest = json.load(open(manifest_path))
 entries = manifest['platforms'][platform]['focus_addresses']
 if len(args) == 4:
