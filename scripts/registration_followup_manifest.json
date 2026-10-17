@@ -4,6 +4,13 @@
     "xp": {
       "focus_addresses": [
         "000555d0",
+        "000583e0",
+        "00058410",
+        "00058440",
+        "00058470",
+        "00058580",
+        "00058df0",
+        "00072d10",
         "000eba40",
         "000eba60",
         "000ebb20",
@@ -14,8 +21,19 @@
         "000ebbe0",
         "000ebd00",
         "000ebd20",
-        "000ebd80"
-      ]
+        "000ebd80",
+        "00108fd0"
+      ],
+      "post_registration_calls": [
+        "00058df0",
+        "00058580",
+        "000583e0",
+        "00058410",
+        "00058440",
+        "00058470",
+        "00072d10"
+      ],
+      "upstream_owner": "00108fd0"
     },
     "win7": {
       "focus_addresses": [
@@ -29,6 +47,7 @@
         "00234dfc",
         "00234e10",
         "00234e4c",
+        "002369ac",
         "002369c8"
       ],
       "dispatcher_other_calls": [
@@ -39,7 +58,8 @@
         "001bda7c",
         "001bdaac",
         "001c40dc"
-      ]
+      ],
+      "registration_callback_installer_caller": "002369ac"
     }
   },
   "caveat": "Fixed RVAs for XP/Win7 368.81 only; verify binary hashes before use; static xrefs do not prove GP106 runtime selection.",
@@ -147,5 +167,6 @@
       "predicted_other_header": "00846320",
       "semantics_confirmed": false
     }
-  ]
+  ],
+  "next_hypothesis": "Check whether XP's seven post-registration calls implement OS-version/processor-group/global-state equivalents to Win7's seven epilogue helpers. Distinguish direct XP registration call from Win7 registration callback installation; neither proves runtime GP106 class selection."
 }
