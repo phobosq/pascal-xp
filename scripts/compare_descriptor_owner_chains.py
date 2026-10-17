@@ -1,42 +1,63 @@
 #!/usr/bin/env python3
-"""Rank XP/Win7 descriptor header owner chains; static correspondence is not runtime proof."""
-import argparse,json,re
+"""Compare sampled descriptor registration wrappers by explicit index, not shape."""
+import argparse
+import json
+import re
 from pathlib import Path
-def features(x):
- code=x.get('decompilation') or ''
- incoming=x.get('incoming') or []; out=x.get('outgoing') or []
- cells=[c for h in x.get('headers',[]) for c in h.get('cells',[])]
- return {'size':x.get('size',0),'header_count':len(x.get('headers',[])),
- 'incoming_code':sum(bool(r.get('owner')) for r in incoming),
- 'incoming_data':sum(not r.get('owner') for r in incoming),
- 'outgoing_calls':sum('CALL' in r.get('type','') for r in out),
- 'outgoing_data':sum(r.get('type')=='DATA' for r in out),
- 'scalar_nonzero':sum(int(c.get('u32','0'),16)!=0 for c in cells),
- 'returns_header':bool(re.search(r'\breturn\s+(&|\(.*\*\))',code)),
- 'contains_branch':bool(re.search(r'\b(if|switch)\s*\(',code)),
- 'caller_count':len(x.get('callers',[]))}
-def sim(a,b):
- fields=('size','header_count','incoming_code','incoming_data','outgoing_calls','outgoing_data','scalar_nonzero','caller_count')
- weights=(.15,.10,.10,.10,.15,.10,.10,.10)
- score=sum(w*(1-min(abs(a[k]-b[k])/max(a[k],b[k],1),1)) for k,w in zip(fields,weights))
- return round(score+.05*(a['returns_header']==b['returns_header'])+.05*(a['contains_branch']==b['contains_branch']),5)
+
+REG = re.compile(r'\bFUN_[0-9a-fA-F]+\(\s*(0x[0-9a-fA-F]+|\d+)\s*,\s*&(PTR_[A-Za-z0-9_]+)\s*\)\s*;', re.I)
+
+def classify(owner):
+    code = owner.get('decompilation') or ''
+    calls = [r for r in owner.get('outgoing', []) if 'CALL' in r.get('type','')]
+    if owner.get('size', 0) > 32 or len(calls) != 1 or not owner.get('headers'):
+        return None
+    m = REG.search(code)
+    if not m:
+        return None
+    body = code.split('{',1)[-1]
+    if re.search(r'\b(if|switch|for|while)\s*\(',body):
+        return None
+    return {'entry':owner['entry'], 'registration_index':int(m.group(1),0),
+            'pointer_symbol':m.group(2),
+            'header_addresses':[h['address'] for h in owner['headers']],
+            'matched_descriptor_sites':sorted({s for h in owner['headers'] for s in h.get('matched_descriptor_sites',[])}),
+            'caller_entries':sorted({c['entry'] for c in owner.get('callers',[])})}
+
+def dispatcher_summary(wrappers):
+    counts={}
+    for r in wrappers:
+        for caller in r['caller_entries']:
+            counts[caller]=counts.get(caller,0)+1
+    return [{'entry':entry,'sampled_wrapper_calls':count} for entry,count in sorted(counts.items(),key=lambda t:(-t[1],t[0]))]
+
 def compare(xp,w7):
- out=[]
- for w in w7.get('owners',[]):
-  wf=features(w); matches=[]
-  for x in xp.get('owners',[]):
-   xf=features(x);matches.append({'xp_entry':x['entry'],'score':sim(xf,wf),'xp_features':xf})
-  matches.sort(key=lambda m:-m['score'])
-  out.append({'win7_entry':w['entry'],'win7_features':wf,'best_xp_matches':matches[:3],
-              'incoming_caller_entries':[c['entry'] for c in w.get('callers',[])],
-              'header_addresses':[h['address'] for h in w.get('headers',[])],'needs_runtime_validation':True})
- out.sort(key=lambda r:(r['best_xp_matches'][0]['score'] if r['best_xp_matches'] else 0,-r['win7_features']['incoming_code']))
- return {'schema_version':1,'xp_owner_count':len(xp.get('owners',[])),'win7_owner_count':len(w7.get('owners',[])),
- 'ranked_unmatched_win7_headers':out,'caveat':'Static ranking only, not patch evidence.'}
+    xr=[c for o in xp.get('owners',[]) if (c:=classify(o))]
+    wr=[c for o in w7.get('owners',[]) if (c:=classify(o))]
+    xi={r['registration_index']:r for r in xr}
+    wi={r['registration_index']:r for r in wr}
+    shared=sorted(xi.keys() & wi.keys())
+    matched=[{'registration_index':i,'xp':xi[i],'win7':wi[i],
+              'evidence':'same static registration index; class identity unverified'} for i in shared]
+    excluded_xp=[o['entry'] for o in xp.get('owners',[]) if not classify(o)]
+    excluded_w7=[o['entry'] for o in w7.get('owners',[]) if not classify(o)]
+    return {'schema_version':2,'xp_owner_count':len(xp.get('owners',[])),
+            'win7_owner_count':len(w7.get('owners',[])),
+            'xp_registration_wrapper_count':len(xr),'win7_registration_wrapper_count':len(wr),
+            'shared_registration_indices':shared,'matched_registration_wrappers':matched,
+            'xp_only_registration_wrappers':[xi[i] for i in sorted(xi.keys()-wi.keys())],
+            'win7_only_registration_wrappers':[wi[i] for i in sorted(wi.keys()-xi.keys())],
+            'excluded_nonwrappers':{'xp':excluded_xp,'win7':excluded_w7},
+            'registration_dispatchers':{'xp':dispatcher_summary(xr),'win7':dispatcher_summary(wr)},
+            'ranked_unmatched_win7_headers':[],
+            'gp106_runtime_selection_proven':False,'patch_candidate':False,
+            'caveat':'FECS-descriptor sampling is incomplete; index differences do not prove missing GPU classes or GP106 runtime selection.'}
+
 def main():
- p=argparse.ArgumentParser()
- for n in ('xp','win7','out'):p.add_argument('--'+n,required=True)
- a=p.parse_args();r=compare(json.loads(Path(a.xp).read_text()),json.loads(Path(a.win7).read_text()))
- Path(a.out).write_text(json.dumps(r,indent=2)+'\n')
- print(json.dumps({'xp':r['xp_owner_count'],'win7':r['win7_owner_count']}))
+    p=argparse.ArgumentParser()
+    for n in ('xp','win7','out'):p.add_argument('--'+n,required=True)
+    a=p.parse_args()
+    result=compare(json.loads(Path(a.xp).read_text()),json.loads(Path(a.win7).read_text()))
+    Path(a.out).write_text(json.dumps(result,indent=2)+'\n')
+    print(json.dumps({k:result[k] for k in ('xp_registration_wrapper_count','win7_registration_wrapper_count','shared_registration_indices')}))
 if __name__=='__main__':main()
