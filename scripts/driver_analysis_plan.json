@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "exporters": [
+    {
+      "id": "fecs_table_roots",
+      "script": "ExportFecsTableRoots.py",
+      "args": [
+        "{out}",
+        "{platform}"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "fecs_descriptor_parents",
+      "script": "ExportFecsDescriptorParents.py",
+      "args": [
+        "{out}",
+        "{platform}"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "gp106_resource_wiring",
+      "script": "ExportGp106ResourceWiring.py",
+      "args": [
+        "{out}",
+        "{platform}"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "gp106_constructor_patterns",
+      "script": "ExportGp106ConstructorPatterns.py",
+      "args": [
+        "{out}",
+        "{platform}"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "gp106_constructor_ownership",
+      "script": "ExportGp106ConstructorOwnership.py",
+      "args": [
+        "{report:gp106_constructor_patterns}",
+        "{out}",
+        "{platform}"
+      ],
+      "depends_on": [
+        "gp106_constructor_patterns"
+      ]
+    },
+    {
+      "id": "descriptor_owner_chains",
+      "script": "ExportDescriptorOwnerChains.py",
+      "args": [
+        "{report:fecs_descriptor_parents}",
+        "{out}",
+        "{platform}"
+      ],
+      "depends_on": [
+        "fecs_descriptor_parents"
+      ]
+    },
+    {
+      "id": "focused_constructor_trace",
+      "script": "ExportFocusedConstructorTrace.py",
+      "args": [
+        "{out}",
+        "{platform}"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "resource_override_wrappers",
+      "script": "ExportResourceOverrideWrappers.py",
+      "args": [
+        "{out}",
+        "{platform}"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "registration_followup",
+      "script": "ExportRegistrationFollowup.py",
+      "args": [
+        "{manifest}",
+        "{out}",
+        "{platform}"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "class_registry_lookup",
+      "script": "ExportClassRegistryLookup.py",
+      "args": [
+        "{out}",
+        "{platform}"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "registry_global_consumers",
+      "script": "ExportRegistryGlobalConsumers.py",
+      "args": [
+        "{out}",
+        "{platform}"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "fecs_helper_callers",
+      "script": "ExportFecsHelperCallers.py",
+      "args": [
+        "{out}",
+        "{platform}"
+      ],
+      "depends_on": []
+    }
+  ]
+}

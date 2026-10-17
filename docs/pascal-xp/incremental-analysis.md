@@ -25,3 +25,7 @@ concurrency.cancel-in-progress is disabled to avoid wasting an already running e
 Run: python -m unittest discover -s scripts -p test_analysis_cache.py -v
 
 Seven synthetic tests cover roundtrip, missing/corrupted/wrong-platform data, identity/config invalidation and malformed JSON. Expected first auto run: cache miss, Ghidra XP/Win7 and comparison. Expected next comparator-only change: validated XP/Win7 cache hits and fresh comparison without Ghidra. Actual speedup must be measured in Actions.
+
+## Phase 2
+
+See [incremental-exporters.md](incremental-exporters.md) for per-exporter fingerprints, dependent cache invalidation and selective headless postScripts. The phase-1 full-report cache is superseded by the separate v2 cache prefix.
