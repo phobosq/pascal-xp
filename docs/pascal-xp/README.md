@@ -30,6 +30,10 @@ Historical research notes from 17 October 2026 for [phobosq/pascal-xp](https://g
 
 The GitHub Actions source of truth is the [Driver analysis workflow](https://github.com/phobosq/pascal-xp/blob/main/.github/workflows/driver-analysis.yml).
 
+## Incremental CI
+
+- [Validated XP/Win7 report cache and compare-only mode](incremental-analysis.md) — fingerprinting, validation and fallback.
+
 ## Reporting workflow
 
 - Commit each completed investigation report to `docs/pascal-xp/` and link it from this index; include the source Driver analysis run and clearly mark unproven hypotheses.

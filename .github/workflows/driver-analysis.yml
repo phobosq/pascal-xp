@@ -8,6 +8,11 @@ on:
       - 'scripts/**'
   workflow_dispatch:
     inputs:
+      analysis_mode:
+        description: 'auto uses cache; compare-only requires valid XP and Win7 caches'
+        type: choice
+        options: [auto, compare-only]
+        default: auto
       release_id:
         description: Draft release ID containing the corpus assets
         required: true
@@ -23,7 +28,7 @@ on:
 
 concurrency:
   group: driver-analysis-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -48,6 +53,8 @@ jobs:
     timeout-minutes: 35
     env:
       GH_TOKEN: ${{ secrets.CORPUS_TOKEN }}
+      GHIDRA_ZIP_URL: https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.1.4_build/ghidra_12.1.4_PUBLIC_20260921.zip
+      GHIDRA_ZIP_SHA256: ddac49f903da9d5bac833e5cc79395098b9c33cfd3279be5f31bd00387d2d4db
       RELEASE_ID: ${{ inputs.release_id || '390358348' }}
       XP_ASSET_ID: ${{ inputs.xp_asset_id || '569106389' }}
       WIN7_ASSET_ID: ${{ inputs.win7_asset_id || '569106473' }}
@@ -65,7 +72,43 @@ jobs:
       - name: Install Python dependencies
         run: python -m pip install -r requirements.txt
 
+      - name: Compute report cache key
+        id: report-key
+        shell: bash
+        run: |
+          asset_id="${!ASSET_ENV}"
+          python scripts/analysis_cache.py key --platform "$PLATFORM" --release-id "$RELEASE_ID" --asset-id "$asset_id"
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          ASSET_ENV: ${{ matrix.asset_env }}
+
+      - name: Restore report cache
+        id: report-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: work/cache/${{ matrix.platform }}
+          key: focused-json-v1-${{ runner.os }}-${{ matrix.platform }}-${{ steps.report-key.outputs.key }}
+
+      - name: Validate restored reports
+        id: cache-validation
+        shell: bash
+        run: |
+          python scripts/analysis_cache.py restore --platform "${{ matrix.platform }}" --key "${{ steps.report-key.outputs.key }}" --cache-dir "work/cache/${{ matrix.platform }}" --reports-dir work/reports
+
+      - name: Reject corrupted cached data
+        if: steps.report-cache.outputs.cache-hit == 'true' && steps.cache-validation.outputs.valid != 'true'
+        run: |
+          echo "::error::Invalid existing cache. Delete its entry in Actions Caches before retrying."
+          exit 1
+
+      - name: Require cache in compare-only mode
+        if: inputs.analysis_mode == 'compare-only' && steps.cache-validation.outputs.valid != 'true'
+        run: |
+          echo "::error::Compare-only requested, but validated focused reports are missing."
+          exit 1
+
       - name: Download selected corpus asset
+        if: steps.cache-validation.outputs.valid != 'true' && inputs.analysis_mode != 'compare-only'
         shell: bash
         run: |
           set -euo pipefail
@@ -86,14 +129,13 @@ jobs:
           DRIVER_NAME: ${{ matrix.driver_name }}
 
       - name: Install Ghidra and PyGhidra
+        if: steps.cache-validation.outputs.valid != 'true' && inputs.analysis_mode != 'compare-only'
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p work/tools
-          release_json="$(gh api repos/NationalSecurityAgency/ghidra/releases/latest)"
-          url="$(printf '%s' "$release_json" | jq -r '.assets[] | select(.name | endswith(".zip")) | .browser_download_url' | head -n1)"
-          test -n "$url"
-          curl -fL "$url" -o work/tools/ghidra.zip
+          curl -fL "$GHIDRA_ZIP_URL" -o work/tools/ghidra.zip
+          echo "$GHIDRA_ZIP_SHA256  work/tools/ghidra.zip" | sha256sum -c -
           unzip -q work/tools/ghidra.zip -d work/tools
           ghidra_root="$(find work/tools -mindepth 1 -maxdepth 1 -type d -name 'ghidra_*' | head -n1)"
           ghidra_root="$(realpath "$ghidra_root")"
@@ -103,6 +145,7 @@ jobs:
           echo "PYGHIDRA_PYTHON=$GITHUB_WORKSPACE/work/tools/pyghidra-venv/bin/python" >> "$GITHUB_ENV"
 
       - name: Focused PyGhidra analysis
+        if: steps.cache-validation.outputs.valid != 'true' && inputs.analysis_mode != 'compare-only'
         shell: bash
         run: |
           set -euo pipefail
@@ -124,12 +167,24 @@ jobs:
           PROJECT: ${{ matrix.project }}
           DRIVER_NAME: ${{ matrix.driver_name }}
 
+      - name: Stage validated new report cache
+        if: steps.cache-validation.outputs.valid != 'true' && inputs.analysis_mode != 'compare-only'
+        run: |
+          python scripts/analysis_cache.py stage --platform "${{ matrix.platform }}" --key "${{ steps.report-key.outputs.key }}" --cache-dir "work/cache/${{ matrix.platform }}" --reports-dir work/reports
+
+      - name: Save complete report cache
+        if: steps.cache-validation.outputs.valid != 'true' && inputs.analysis_mode != 'compare-only'
+        uses: actions/cache/save@v4
+        with:
+          path: work/cache/${{ matrix.platform }}
+          key: focused-json-v1-${{ runner.os }}-${{ matrix.platform }}-${{ steps.report-key.outputs.key }}
+
       - name: Remove proprietary input
         if: always()
         run: rm -rf work/drivers work/ghidra-projects work/tools
 
       - name: Upload focused reports
-        if: always()
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: focused-${{ matrix.platform }}-${{ github.run_number }}
