@@ -4,8 +4,8 @@ import json
 from ghidra.app.decompiler import DecompInterface
 
 TARGETS={
- "xp":["000b6e40","0018f0a0","004e25c0"],
- "win7":["003242a4","0025c97c","005737a4"],
+ "xp":["000b6e40","0018f0a0","004e25c0","003cf290"],
+ "win7":["003242a4","0025c97c","005737a4","0046d474","004fab14","004fb48c","004fa748","004fba94","005a13c4","005a1260"],
 }
 MAX_REFS=128
 MAX_DECOMP=40000
