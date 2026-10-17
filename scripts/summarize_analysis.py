@@ -19,6 +19,9 @@ chains=load("xp_vs_win7_descriptor_owner_chains.json")
 sec2=load("sec2_wrapper_audit.json")
 lifecycle=load("registration_lifecycle_audit.json")
 registration=load("xp_vs_win7_registration_followup.json")
+registry=load("xp_vs_win7_class_registry_lookup.json")
+xp_fecs_tables=load("xp_fecs_root_registration.json")
+win7_fecs_tables=load("win7_fecs_root_registration.json")
 
 def unique_owners(obj):
     out=set()
@@ -51,6 +54,14 @@ top_shapes=(shape.get("ranked_pairs") or [])[:10]
 top_ctor=(ctor.get("top_actionable") or [])[:10]
 
 next_actions=[]
+if registry and (registry.get("xp",{}).get("top_consumers") or registry.get("win7",{}).get("top_consumers")):
+    next_actions.append({
+      "priority":1,
+      "reason":"Static class-registry state consumers identified; actual GP106 class selection still unproven.",
+      "action":"Trace top bounded registry global-data consumers toward an observed class lookup/branch and propagated status. Do not equate class index with PCI device ID.",
+      "targets":{"xp":registry.get("xp",{}).get("top_consumers",[])[:5],
+                 "win7":registry.get("win7",{}).get("top_consumers",[])[:5]}})
+
 unmatched=chains.get("ranked_unmatched_win7_headers") or []
 if unmatched:
     p=unmatched[0]
@@ -101,6 +112,9 @@ summary={
    "sec2_wrapper_audit":sec2,
    "registration_lifecycle_audit":lifecycle,
    "registration_counterparts":registration,
+   "class_registry_lookup":registry,
+   "xp_fecs_table_registration":xp_fecs_tables,
+   "win7_fecs_table_registration":win7_fecs_tables,
    "status_flow_present":bool(status),
    "slot_comparison_present":bool(slots),
  },
@@ -120,6 +134,10 @@ lines += [f"- XP descriptor-parent owners: {len(xp_po)}",f"- Win7 descriptor-par
           f"- Ranked GP106-like constructor pairs: {len(ctor.get('ranked_pairs') or [])}",
           f"- Descriptor owner chains ranked: {len(unmatched)}",
           f"- SEC2 audit classification: {sec2.get('semantic_classification', 'not available')}",
+          f"- XP sampled FECS-root initializer/data links: {len(xp_fecs_tables.get('initializer_data_links', []))}",
+          f"- Win7 sampled FECS-root initializer/data links: {len(win7_fecs_tables.get('initializer_data_links', []))}",
+          f"- XP registry candidate lookup consumers: {registry.get('xp', {}).get('candidate_consumer_count', 0)}",
+          f"- Win7 registry candidate lookup consumers: {registry.get('win7', {}).get('candidate_consumer_count', 0)}",
           f"- Registration index/header matches: {registration.get('matched_indices', 0)}/{registration.get('total_counterparts', 0)}",
           f"- Registration callback slot +0x4c8 parity: {lifecycle.get('callback_slot_parity_confirmed', False)}",
           f"- Seven OS helper semantics paired XP/Win7: {lifecycle.get('post_registration', {}).get('semantic_parity_confirmed', False)}",
