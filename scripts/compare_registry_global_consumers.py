@@ -82,6 +82,14 @@ def summarize(report):
             'unclassified_xrefs':[r['entry'] for r in scored if r.get('kind')=='undecompiled'][:16],
             'all_scored':scored}
 
+def new_lookup_candidates(side_report):
+    """Exclude the known registry registration entry from new lookup hypotheses."""
+    registry_entry = str(side_report.get('registration_function') or '').lower()
+    return [row for row in side_report.get('positive_candidates', [])
+            if row.get('kind') != 'known_registry_registration'
+            and str(row.get('entry') or '').lower() != registry_entry]
+
+
 def compare(xp,win7):
     return {'schema_version':1,'xp':summarize(xp),'win7':summarize(win7),
        'runtime_gp106_selection_proven':False,'patch_candidate':False,
