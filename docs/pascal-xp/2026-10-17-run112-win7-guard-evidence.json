@@ -1,0 +1,28 @@
+{
+  "driver_analysis_run": 112,
+  "head_sha": "e4183c2ba1cfde2d0f76ed95aaf71e6faae476c9",
+  "win7_guard_001c4ea4": {
+    "unique_sampled_callers": 207,
+    "callers_with_0x2f": 203,
+    "paired_with_001c54f4": 131
+  },
+  "win7_guard_001c54f4": {
+    "unique_sampled_callers": 163,
+    "callers_with_0x2f": 145
+  },
+  "win7_lock_bracketing": {
+    "acquire_001c4d90_callers": 36,
+    "release_001c4ec8_callers": 36,
+    "paired_callers": 36,
+    "acquire_only": 0,
+    "release_only": 0
+  },
+  "win7_second_bracketing": {
+    "entry_001c5578_callers": 62,
+    "exit_001c5588_callers": 61,
+    "paired_callers": 60
+  },
+  "runtime_gp106_selection_proven": false,
+  "patch_candidate": false,
+  "caveat": "Sampled decompilation callers, not full program xrefs. Lock-ownership semantics are inferred from bracketing; guard body not exported."
+}
