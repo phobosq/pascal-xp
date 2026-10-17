@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 from pathlib import Path
+from compare_registry_global_consumers import new_lookup_candidates
 
 R=Path("work/reports")
 def load(name):
@@ -21,6 +22,10 @@ lifecycle=load("registration_lifecycle_audit.json")
 registration=load("xp_vs_win7_registration_followup.json")
 registry=load("xp_vs_win7_class_registry_lookup.json")
 registry_consumers=load("xp_vs_win7_registry_global_consumers.json")
+registry_new_candidates={
+    side:new_lookup_candidates(registry_consumers.get(side,{}))
+    for side in ("xp","win7")
+}
 xp_fecs_tables=load("xp_fecs_root_registration.json")
 win7_fecs_tables=load("win7_fecs_root_registration.json")
 
@@ -57,8 +62,8 @@ top_ctor=(ctor.get("top_actionable") or [])[:10]
 next_actions=[]
 if registry_consumers:
     likely={
-      side:registry_consumers.get(side,{}).get("positive_candidates",[])[:6]
-      for side in ("xp","win7")
+        side:registry_new_candidates[side][:6]
+        for side in ("xp","win7")
     }
     if likely["xp"] or likely["win7"]:
         next_actions.append({
@@ -128,6 +133,7 @@ summary={
    "registration_counterparts":registration,
    "class_registry_lookup":registry,
    "registry_global_dispatch_candidates":registry_consumers,
+   "registry_global_new_lookup_candidates":registry_new_candidates,
    "xp_fecs_table_registration":xp_fecs_tables,
    "win7_fecs_table_registration":win7_fecs_tables,
    "status_flow_present":bool(status),
@@ -153,8 +159,10 @@ lines += [f"- XP descriptor-parent owners: {len(xp_po)}",f"- Win7 descriptor-par
           f"- Win7 sampled FECS-root initializer/data links: {len(win7_fecs_tables.get('initializer_data_links', []))}",
           f"- XP registry candidate lookup consumers: {registry.get('xp', {}).get('candidate_consumer_count', 0)}",
           f"- XP registry global dispatch candidates: {len(registry_consumers.get('xp', {}).get('positive_candidates', []))}",
+          f"- XP NEW registry lookup candidates: {len(registry_new_candidates['xp'])}"
           f"- Win7 registry global dispatch candidates: {len(registry_consumers.get('win7', {}).get('positive_candidates', []))}",
           f"- Win7 registry candidate lookup consumers: {registry.get('win7', {}).get('candidate_consumer_count', 0)}",
+          f"- Win7 NEW registry lookup candidates: {len(registry_new_candidates['win7'])}",
           f"- Registration index/header matches: {registration.get('matched_indices', 0)}/{registration.get('total_counterparts', 0)}",
           f"- Registration callback slot +0x4c8 parity: {lifecycle.get('callback_slot_parity_confirmed', False)}",
           f"- Seven OS helper semantics paired XP/Win7: {lifecycle.get('post_registration', {}).get('semantic_parity_confirmed', False)}",
