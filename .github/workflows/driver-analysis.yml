@@ -78,6 +78,7 @@ jobs:
           gh api -H 'Accept: application/octet-stream' "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" > "work/drivers/${DRIVER_NAME}"
           test -s "work/drivers/${DRIVER_NAME}"
           sha256sum "work/drivers/${DRIVER_NAME}" > "work/reports/${PLATFORM}_input_sha256.txt"
+          python -c 'import hashlib,json,sys; p,platform=sys.argv[1:]; expected=json.load(open("scripts/registration_followup_manifest.json"))["input_sha256"][platform]; actual=hashlib.sha256(open(p,"rb").read()).hexdigest(); assert actual==expected, "focused RVA manifest does not match input binary"' "work/drivers/${DRIVER_NAME}" "$PLATFORM"
         env:
           PLATFORM: ${{ matrix.platform }}
           ASSET_ENV: ${{ matrix.asset_env }}
@@ -106,7 +107,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p work/ghidra-projects
-          "$PYGHIDRA_PYTHON" -m pyghidra.ghidra_launch             --install-dir "$GHIDRA_INSTALL_DIR"             ghidra.app.util.headless.AnalyzeHeadless             "$GITHUB_WORKSPACE/work/ghidra-projects" "$PROJECT"             -import "$GITHUB_WORKSPACE/work/drivers/$DRIVER_NAME"             -scriptPath "$GITHUB_WORKSPACE/ghidra"             -postScript ExportFecsTableRoots.py "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_fecs_table_roots.json" "$PLATFORM"             -postScript ExportFecsDescriptorParents.py "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_fecs_descriptor_parents.json" "$PLATFORM"             -postScript ExportGp106ResourceWiring.py "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_gp106_resource_wiring.json" "$PLATFORM"             -postScript ExportGp106ConstructorPatterns.py "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_gp106_constructor_patterns.json" "$PLATFORM"             -postScript ExportGp106ConstructorOwnership.py "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_gp106_constructor_patterns.json" "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_gp106_constructor_ownership.json" "$PLATFORM"             -postScript ExportDescriptorOwnerChains.py "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_fecs_descriptor_parents.json" "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_descriptor_owner_chains.json" "$PLATFORM"             -postScript ExportFocusedConstructorTrace.py "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_focused_constructor_trace.json" "$PLATFORM"             -postScript ExportResourceOverrideWrappers.py "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_resource_override_wrappers.json" "$PLATFORM"             -postScript ExportFecsHelperCallers.py "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_fecs_helper_callers.json" "$PLATFORM"             -deleteProject
+          "$PYGHIDRA_PYTHON" -m pyghidra.ghidra_launch             --install-dir "$GHIDRA_INSTALL_DIR"             ghidra.app.util.headless.AnalyzeHeadless             "$GITHUB_WORKSPACE/work/ghidra-projects" "$PROJECT"             -import "$GITHUB_WORKSPACE/work/drivers/$DRIVER_NAME"             -scriptPath "$GITHUB_WORKSPACE/ghidra"             -postScript ExportFecsTableRoots.py "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_fecs_table_roots.json" "$PLATFORM"             -postScript ExportFecsDescriptorParents.py "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_fecs_descriptor_parents.json" "$PLATFORM"             -postScript ExportGp106ResourceWiring.py "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_gp106_resource_wiring.json" "$PLATFORM"             -postScript ExportGp106ConstructorPatterns.py "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_gp106_constructor_patterns.json" "$PLATFORM"             -postScript ExportGp106ConstructorOwnership.py "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_gp106_constructor_patterns.json" "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_gp106_constructor_ownership.json" "$PLATFORM"             -postScript ExportDescriptorOwnerChains.py "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_fecs_descriptor_parents.json" "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_descriptor_owner_chains.json" "$PLATFORM"             -postScript ExportFocusedConstructorTrace.py "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_focused_constructor_trace.json" "$PLATFORM"             -postScript ExportResourceOverrideWrappers.py "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_resource_override_wrappers.json" "$PLATFORM"             -postScript ExportRegistrationFollowup.py "$GITHUB_WORKSPACE/scripts/registration_followup_manifest.json" "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_registration_followup.json" "$PLATFORM"             -postScript ExportFecsHelperCallers.py "$GITHUB_WORKSPACE/work/reports/${PLATFORM}_fecs_helper_callers.json" "$PLATFORM"             -deleteProject
           test -s "work/reports/${PLATFORM}_fecs_table_roots.json"
           test -s "work/reports/${PLATFORM}_fecs_descriptor_parents.json"
           test -s "work/reports/${PLATFORM}_descriptor_owner_chains.json"
@@ -115,6 +116,7 @@ jobs:
           test -s "work/reports/${PLATFORM}_focused_constructor_trace.json"
           test -s "work/reports/${PLATFORM}_resource_override_wrappers.json"
           test -s "work/reports/${PLATFORM}_fecs_helper_callers.json"
+          test -s "work/reports/${PLATFORM}_registration_followup.json"
         env:
           PLATFORM: ${{ matrix.platform }}
           PROJECT: ${{ matrix.project }}
@@ -159,6 +161,9 @@ jobs:
           python scripts/compare_descriptor_owner_chains.py --xp work/reports/xp_descriptor_owner_chains.json --win7 work/reports/win7_descriptor_owner_chains.json --out work/reports/xp_vs_win7_descriptor_owner_chains.json
           python scripts/audit_sec2_wrapper.py --win7-trace work/reports/win7_focused_constructor_trace.json --out work/reports/sec2_wrapper_audit.json
           test -s work/reports/xp_vs_win7_descriptor_owner_chains.json
+          python scripts/compare_registration_followup.py --manifest scripts/registration_followup_manifest.json --xp work/reports/xp_registration_followup.json --win7 work/reports/win7_registration_followup.json --out work/reports/xp_vs_win7_registration_followup.json
+          python scripts/rank_registration_followup.py --manifest scripts/registration_followup_manifest.json --helper-report work/reports/xp_vs_win7_registration_followup.json --out work/reports/registration_followup_ranked.json
+          test -s work/reports/registration_followup_ranked.json
           python scripts/summarize_analysis.py
           test -s work/reports/xp_vs_win7_gp106_constructor_ownership.json
           test -s work/reports/analysis_summary.json
