@@ -15,3 +15,4 @@ jobs:
       - run: python -m pip install -r requirements.txt
       - run: python -m py_compile scripts/prepare_corpus.py scripts/scan_pe.py scripts/scan_pascal_firmware.py scripts/compare_program_facts.py scripts/find_pascal_candidates.py
       - run: python -m unittest discover -s scripts -p 'test_fecs_class_registry.py' -v
+      - run: python -m unittest discover -s scripts -p 'test_registry_global_consumers.py' -v
