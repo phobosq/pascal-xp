@@ -22,7 +22,10 @@
         "000ebd00",
         "000ebd20",
         "000ebd80",
-        "00108fd0"
+        "00108fd0",
+        "0014ef70",
+        "00260170",
+        "002828f0"
       ],
       "post_registration_calls": [
         "00058df0",
@@ -33,7 +36,12 @@
         "00058470",
         "00072d10"
       ],
-      "upstream_owner": "00108fd0"
+      "upstream_owner": "00108fd0",
+      "fecs_anchors": {
+        "gr_interrupt": "0014ef70",
+        "ucode": "00260170",
+        "ucode_variant": "002828f0"
+      }
     },
     "win7": {
       "focus_addresses": [
@@ -48,7 +56,10 @@
         "00234e10",
         "00234e4c",
         "002369ac",
-        "002369c8"
+        "002369c8",
+        "002a8b30",
+        "00314c60",
+        "0037d8c0"
       ],
       "dispatcher_other_calls": [
         "001bd760",
@@ -59,7 +70,12 @@
         "001bdaac",
         "001c40dc"
       ],
-      "registration_callback_installer_caller": "002369ac"
+      "registration_callback_installer_caller": "002369ac",
+      "fecs_anchors": {
+        "gr_interrupt": "002a8b30",
+        "ucode": "0037d8c0",
+        "ucode_variant": "00314c60"
+      }
     }
   },
   "caveat": "Fixed RVAs for XP/Win7 368.81 only; verify binary hashes before use; static xrefs do not prove GP106 runtime selection.",
@@ -168,5 +184,5 @@
       "semantics_confirmed": false
     }
   ],
-  "next_hypothesis": "Check whether XP's seven post-registration calls implement OS-version/processor-group/global-state equivalents to Win7's seven epilogue helpers. Distinguish direct XP registration call from Win7 registration callback installation; neither proves runtime GP106 class selection."
+  "next_hypothesis": "Use incoming xrefs on FECS ucode and GR interrupt anchors to locate the owning implementation and then the GP106 runtime class-selection chain; avoid conflating generic RM_ASSERT helpers with FECS getters."
 }
