@@ -44,7 +44,7 @@ def root_owners(obj):
 xp_po=unique_owners(xp_par); w7_po=unique_owners(w7_par)
 xp_ro=root_owners(xp_roots); w7_ro=root_owners(w7_roots)
 top_shapes=(shape.get("ranked_pairs") or [])[:10]
-top_ctor=(ctor.get("top_actionable") or ctor.get("ranked_pairs") or [])[:10]
+top_ctor=(ctor.get("top_actionable") or [])[:10]
 
 next_actions=[]
 if top_ctor:
@@ -104,7 +104,9 @@ lines += [f"- XP descriptor-parent owners: {len(xp_po)}",f"- Win7 descriptor-par
           f"- XP FECS table-root owners: {len(xp_ro)}",f"- Win7 FECS table-root owners: {len(w7_ro)}",
           f"- Ranked callback-shape pairs: {len(shape.get('ranked_pairs') or [])}",
           f"- Ranked GP106-like constructor pairs: {len(ctor.get('ranked_pairs') or [])}",
-          f"- Actionable FECS-proximate constructor pairs: {len(ctor.get('top_actionable') or [])}",""]
+          f"- Confirmed actionable constructor pairs: {len(ctor.get('top_actionable') or [])}",
+          f"- Two-sided static proximity hypotheses: {len(ctor.get('two_sided_proximity_hypotheses') or [])}",
+          f"- One-sided static proximity hypotheses: {len(ctor.get('one_sided_proximity_hypotheses') or [])}",""]
 if next_actions:
     lines.append("## Next actions")
     for a in sorted(next_actions,key=lambda x:x["priority"]):
