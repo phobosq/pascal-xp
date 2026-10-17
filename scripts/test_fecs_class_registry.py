@@ -51,6 +51,39 @@ class ClassRegistryTests(unittest.TestCase):
         self.assertEqual(out['top_consumers'][0]['xref_sites'],2)
         self.assertEqual(out['top_consumers'][0]['linked_state_variables'],2)
         self.assertFalse(out['top_consumers'][0]['runtime_selected'])
+    def test_root_vs_callee_global_provenance(self):
+        r={'registration_entry':'00117db0',
+           'registration_function':{'incoming':[],'analysis':{'status':'ok'}},
+           'candidate_global_references':[
+               {'address':'0094b270','producers':[{'entry':'registry'}]},
+               {'address':'0094b298','producers':[{'entry':'000715d0'}]}],
+           'ranked_lookup_candidates':[
+               {'entry':'00054490','xref_sites':['x','y'],
+                'state_addresses':['0094b270'],'status':'ok'},
+               {'entry':'000716c0','xref_sites':['a','b','c'],
+                'state_addresses':['0094b298'],'status':'ok'},
+               {'entry':'00072380','xref_sites':['m','n'],
+                'state_addresses':['0094b270','0094b298'],'status':'ok'}]}
+        out=compact(r)
+        self.assertEqual(out['registry_root_global_addresses'],['0094b270'])
+        self.assertEqual(out['helper_only_global_addresses'],['0094b298'])
+        self.assertEqual(out['candidate_consumer_count'],2)
+        self.assertEqual(out['excluded_helper_only_consumer_count'],1)
+        self.assertEqual(out['excluded_helper_only_consumers'][0]['entry'],'000716c0')
+        self.assertEqual({x['entry'] for x in out['top_consumers']},
+                         {'00054490','00072380'})
+        self.assertFalse(out['top_consumers'][0]['runtime_selected'])
+
+    def test_callee_only_provenance_never_proves_lookup(self):
+        out=compact({'registration_entry':'0023c050',
+            'candidate_global_references':[
+                {'address':'007da7d4','producers':[{'entry':'00199394'}]}],
+            'ranked_lookup_candidates':[{'entry':'00197ae8',
+                'xref_sites':['a'],'state_addresses':['007da7d4']} ]})
+        self.assertTrue(out['provenance_available'])
+        self.assertEqual(out['candidate_consumer_count'],0)
+        self.assertEqual(out['excluded_helper_only_consumer_count'],1)
+
     def test_no_runtime_classification_from_static_xrefs(self):
         out=compare({}, {})
         self.assertFalse(out['runtime_gp106_selection_proven'])
