@@ -162,6 +162,8 @@ jobs:
           python scripts/audit_sec2_wrapper.py --win7-trace work/reports/win7_focused_constructor_trace.json --out work/reports/sec2_wrapper_audit.json
           test -s work/reports/xp_vs_win7_descriptor_owner_chains.json
           python scripts/compare_registration_followup.py --manifest scripts/registration_followup_manifest.json --xp work/reports/xp_registration_followup.json --win7 work/reports/win7_registration_followup.json --out work/reports/xp_vs_win7_registration_followup.json
+          python scripts/audit_registration_lifecycle.py --manifest scripts/registration_followup_manifest.json --xp work/reports/xp_registration_followup.json --win7 work/reports/win7_registration_followup.json --out work/reports/registration_lifecycle_audit.json
+          test -s work/reports/registration_lifecycle_audit.json
           python scripts/rank_registration_followup.py --manifest scripts/registration_followup_manifest.json --helper-report work/reports/xp_vs_win7_registration_followup.json --out work/reports/registration_followup_ranked.json
           test -s work/reports/registration_followup_ranked.json
           python scripts/summarize_analysis.py
