@@ -15,6 +15,8 @@ shape=load("xp_vs_win7_callback_shapes.json")
 slots=load("xp_vs_win7_fecs_slot_assignments.json")
 status=load("xp_vs_win7_fecs_status_flow.json")
 ctor=load("xp_vs_win7_gp106_constructor_ownership.json")
+chains=load("xp_vs_win7_descriptor_owner_chains.json")
+sec2=load("sec2_wrapper_audit.json")
 
 def unique_owners(obj):
     out=set()
@@ -47,6 +49,12 @@ top_shapes=(shape.get("ranked_pairs") or [])[:10]
 top_ctor=(ctor.get("top_actionable") or [])[:10]
 
 next_actions=[]
+unmatched=chains.get("ranked_unmatched_win7_headers") or []
+if unmatched:
+    p=unmatched[0]
+    next_actions.append({"priority":1,"reason":"Descriptor header owner needs GP106 class-selection verification.",
+      "action":"Trace incoming registration callers and branch conditions before proposing a patch.",
+      "targets":{"win7":p.get("win7_entry"),"xp_candidates":p.get("best_xp_matches",[])}})
 if top_ctor:
     p=top_ctor[0]
     next_actions.append({
@@ -87,6 +95,8 @@ summary={
    "win7_table_root_owners":w7_ro,
    "callback_shape_top":top_shapes,
    "gp106_constructor_top":top_ctor,
+   "descriptor_header_owner_ranking":unmatched[:10],
+   "sec2_wrapper_audit":sec2,
    "status_flow_present":bool(status),
    "slot_comparison_present":bool(slots),
  },
@@ -104,6 +114,8 @@ lines += [f"- XP descriptor-parent owners: {len(xp_po)}",f"- Win7 descriptor-par
           f"- XP FECS table-root owners: {len(xp_ro)}",f"- Win7 FECS table-root owners: {len(w7_ro)}",
           f"- Ranked callback-shape pairs: {len(shape.get('ranked_pairs') or [])}",
           f"- Ranked GP106-like constructor pairs: {len(ctor.get('ranked_pairs') or [])}",
+          f"- Descriptor owner chains ranked: {len(unmatched)}",
+          f"- SEC2 audit classification: {sec2.get('semantic_classification', 'not available')}",
           f"- Confirmed actionable constructor pairs: {len(ctor.get('top_actionable') or [])}",
           f"- Two-sided static proximity hypotheses: {len(ctor.get('two_sided_proximity_hypotheses') or [])}",
           f"- One-sided static proximity hypotheses: {len(ctor.get('one_sided_proximity_hypotheses') or [])}",""]
