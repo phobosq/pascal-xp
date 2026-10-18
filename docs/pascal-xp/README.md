@@ -16,6 +16,8 @@ Historical research notes from 17 October 2026 for [phobosq/pascal-xp](https://g
 | GPU-slot owner bitmap and registry ranking audit | [#119](https://github.com/phobosq/pascal-xp/actions/runs/39070773238) | [GPU-slot ownership](2026-10-17-run119-gpu-slot-ownership.md) |
 | GPU-slot ownership preflight and owner-token predicates | [#121](https://github.com/phobosq/pascal-xp/actions/runs/39074225352) | [Slot-owner preflight](2026-10-18-run121-slot-owner-preflight.md) |
 | FECS firmware dispatch structural parity and selector offsets | [#126](https://github.com/phobosq/pascal-xp/actions/runs/39080438535) | [FECS ucode dispatch](2026-10-18-run126-fecs-ucode-dispatch.md) |
+| FECS post-callback selector ordering and four-case state | [#126](https://github.com/phobosq/pascal-xp/actions/runs/39080438535) | [FECS post-callback audit](2026-10-18-run126-fecs-selector-postdispatch.md) |
+| RMInstLoc3 selector provenance and consistent +8 layout shift | [#126](https://github.com/phobosq/pascal-xp/actions/runs/39080438535) | [RMInstLoc selector provenance](2026-10-18-run126-rminstloc-selector-provenance.md) |
 | Independent analysis of a **modified XP probe**, not the original input | Separate local examination | [Probe analysis](2026-10-17-modified-xp-probe.md) |
 
 ## Important chronological corrections
