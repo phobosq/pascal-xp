@@ -18,6 +18,7 @@ Historical research notes from 17 October 2026 for [phobosq/pascal-xp](https://g
 | FECS firmware dispatch structural parity and selector offsets | [#126](https://github.com/phobosq/pascal-xp/actions/runs/39080438535) | [FECS ucode dispatch](2026-10-18-run126-fecs-ucode-dispatch.md) |
 | FECS post-callback selector ordering and four-case state | [#126](https://github.com/phobosq/pascal-xp/actions/runs/39080438535) | [FECS post-callback audit](2026-10-18-run126-fecs-selector-postdispatch.md) |
 | RMInstLoc3 selector provenance and consistent +8 layout shift | [#126](https://github.com/phobosq/pascal-xp/actions/runs/39080438535) | [RMInstLoc selector provenance](2026-10-18-run126-rminstloc-selector-provenance.md) |
+| FECS +0x168 callback-slot writer aliases and indexed-table false positives | [#126](https://github.com/phobosq/pascal-xp/actions/runs/39080438535) | [Callback-slot writer alias audit](2026-10-19-run126-callback-slot-writer-alias-audit.md) |
 | Independent analysis of a **modified XP probe**, not the original input | Separate local examination | [Probe analysis](2026-10-17-modified-xp-probe.md) |
 
 ## Important chronological corrections
