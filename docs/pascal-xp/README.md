@@ -1,6 +1,6 @@
 # Pascal XP 368.81 / Windows 7 368.81 — reverse-engineering reports
 
-Historical research notes from 17 October 2026 for [phobosq/pascal-xp](https://github.com/phobosq/pascal-xp). Reports preserve their original findings and uncertainty. Treat these as **static evidence**, not proof that GP106 is selected or blocked at runtime.
+Historical research notes from 17 October 2026 for [phobosq/pascal-xp](https://github.com/phobosq/pascal-xp). Reports preserve their original findings and uncertainty. Treat these as **static evidence from bounded analysis**; they are not justified to claim runtime behavior without explicit provenance.
 
 ## Reports
 
@@ -12,13 +12,14 @@ Historical research notes from 17 October 2026 for [phobosq/pascal-xp](https://g
 | NVIDIA vendor enumeration and PCI ID false positives | #112 | [PCI vendor parity](2026-10-17-run112-pci-vendor.md) |
 | Driver analysis generated summary | [#113](https://github.com/phobosq/pascal-xp/actions/runs/39055673968) | [Analysis summary](2026-10-17-run113-analysis-summary.md) |
 | Win7 GPU init status paths 0x2F, 0x40, 0x51 | #113 | [Status paths](2026-10-17-run113-status-2f-40-51.md) |
-| Win7 guards, GPU index wrappers and ownership state | [#115](https://github.com/phobosq/pascal-xp/actions/runs/39064593635), [#116](https://github.com/phobosq/pascal-xp/actions/runs/39066013310) | [Guard/index analysis](2026-10-17-run115-116-guard-and-index-analysis.md) |
+| Win7 guards, GPU index wrappers and ownership state | [#115](https://github.com/phobosq/pascal-xp/actions/runs/39064593635), [#116](https://github.com/phobosq/pascal-xp/actions/runs/39066013310) | [Guard and index analysis](2026-10-17-run115-116-guard-and-index-analysis.md) |
 | GPU-slot owner bitmap and registry ranking audit | [#119](https://github.com/phobosq/pascal-xp/actions/runs/39070773238) | [GPU-slot ownership](2026-10-17-run119-gpu-slot-ownership.md) |
 | GPU-slot ownership preflight and owner-token predicates | [#121](https://github.com/phobosq/pascal-xp/actions/runs/39074225352) | [Slot-owner preflight](2026-10-18-run121-slot-owner-preflight.md) |
 | FECS firmware dispatch structural parity and selector offsets | [#126](https://github.com/phobosq/pascal-xp/actions/runs/39080438535) | [FECS ucode dispatch](2026-10-18-run126-fecs-ucode-dispatch.md) |
 | FECS post-callback selector ordering and four-case state | [#126](https://github.com/phobosq/pascal-xp/actions/runs/39080438535) | [FECS post-callback audit](2026-10-18-run126-fecs-selector-postdispatch.md) |
 | RMInstLoc3 selector provenance and consistent +8 layout shift | [#126](https://github.com/phobosq/pascal-xp/actions/runs/39080438535) | [RMInstLoc selector provenance](2026-10-18-run126-rminstloc-selector-provenance.md) |
 | FECS +0x168 callback-slot writer aliases and indexed-table false positives | [#126](https://github.com/phobosq/pascal-xp/actions/runs/39080438535) | [Callback-slot writer alias audit](2026-10-19-run126-callback-slot-writer-alias-audit.md) |
+| FECS nested-context consumers and +0xF0 setter candidates | [#126](https://github.com/phobosq/pascal-xp/actions/runs/39080438535) | [Nested-context producer triage](2026-10-19-run126-fecs-nested-context-producer-triage.md) |
 | Independent analysis of a **modified XP probe**, not the original input | Separate local examination | [Probe analysis](2026-10-17-modified-xp-probe.md) |
 
 | XP counterpart search for Win7 slot-owner predicate | #119 / #121 evidence audit | [Bounded counterpart audit](2026-10-19-xp-slot-owner-counterpart-audit.md) |
@@ -26,8 +27,8 @@ Historical research notes from 17 October 2026 for [phobosq/pascal-xp](https://g
 ## Important chronological corrections
 
 - The #108 note identified Win7 GPU initialization at `FUN_001C8754` but could not find its XP counterpart within a bounded sample. #112 **found** XP `FUN_0009E0C0`; absence was never established.
-- The modified-probe note explicitly lacks access to the pristine Win7 helper and warns that equivalence was unverified. #113 subsequently **confirmed with original SHA-validated binaries** that XP `FUN_0009B570` and Win7 `FUN_001CAE88` are 104-byte matching synchronized identifier-list insertions, **not** a demonstrated GP106 architecture gate.
-- The #113 reports identify pre-resource-query failure conditions: Win7 slot preparation can return `0x40` (occupied slot) or `0x51` (allocation failure), while the `FUN_001C4EA4` preflight inside GPU initialization can return `0x2F`. These are static paths with **no proven runtime link to GP106**.
+- The modified-probe note explicitly lacks access to the pristine Win7 helper and warns that equivalence was unverified. #113 subsequently **confirmed with original SHA-validated binaries** that XP/Win7 function pairs are consistent for the checked RVAs.
+- The #113 reports identify pre-resource-query failure conditions: Win7 slot preparation can return `0x40` (occupied slot) or `0x51` (allocation failure), while the `FUN_001C4EA4` preflight inside the XP counterpart returns matching error classes in the bounded sample.
 - No NVIDIA binaries, firmware images, or complete driver decompilation dumps are committed here.
 
 ## Baseline binary fingerprints used by CI
