@@ -25,6 +25,18 @@ The bounded exports also contain a Win7 direct `+0x168` function-pointer writer 
 
 Do not rank candidates solely by offset or proximity to the registry global: `+0x168` is shared by multiple structures and bulk initialization patterns.
 
+## Structural filtering of the writer candidates
+
+A further bounded inspection of the exported function bodies provides a **negative discriminator** for the two bulk slot-fillers, beyond their shared numeric `+0x168` slot:
+
+- The 22-slot family indexes records with stride `0x108`, and its visible per-index writes span `+0x88` through `+0x180` relative to the array base (a `0xF8`-byte write window, including the scalar at `+0x88`).
+- The 53-slot family indexes with stride `0x1B8`, and its visible per-index writes span `+0x80` through `+0x230` (a `0x1B0`-byte write window, including the scalar at `+0x80`).
+- Both FECS selector-bearing functions use the *nested object* `*( *(param_2+0x160) + 0xF0 )`, and read its **direct function-pointer field** at `+0x168`. They also write fields as far as `+0x4AC` on that same nested object. The FECS object therefore has a substantially different **observed access footprint** from either indexed slot-filler record.
+
+These facts **deprioritize** the bulk slot-fillers as FECS callback producers. The record strides are *not verified allocation sizes*, however, and a common numeric offset is neither an alias proof nor an absolute non-alias proof.
+
+The two other offset-matching writers are likewise not a proven XP/Win7 pair. In XP `FUN_000E5D10`, the `+0x168` assignment to `FUN_00095400` is guarded by a check of the field at `+0x1A8` against `0x02FFFFFF`; the object is obtained from `*(param_1+8)`. In Win7 `FUN_0095B780`, the exported body writes `FUN_001ACBD0` directly to `param_1+0x168` as part of a large pointer-table initializer. **Conditional versus unconditional writes in two unpaired structures do not demonstrate an XP GP106 incompatibility.** Establish the exact nested-object identity and a matching producer before interpreting these as an OS-specific branch difference.
+
 ## Status and next bounded experiment
 
 The existing #126 FECS comparator still confirms structural parity for both ucode function pairs; the descriptor-owner comparator has no ranked unmatched Win7 header; the registration follow-up remains 11/11 matched; new registry-global lookup candidates remain XP/Win7 0/0. [Python CI #159](https://github.com/phobosq/pascal-xp/actions/runs/39171745170) passed on the current documentation HEAD. No newer Driver analysis run has superseded #126 as of this audit.
