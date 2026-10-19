@@ -29,8 +29,8 @@ Do not rank candidates solely by offset or proximity to the registry global: `+0
 
 A further bounded inspection of the exported function bodies provides a **negative discriminator** for the two bulk slot-fillers, beyond their shared numeric `+0x168` slot:
 
-- The 22-slot family indexes records with stride `0x108`, and its visible per-index writes span `+0x88` through `+0x180` relative to the array base (a `0xF8`-byte write window, including the scalar at `+0x88`).
-- The 53-slot family indexes with stride `0x1B8`, and its visible per-index writes span `+0x80` through `+0x230` (a `0x1B0`-byte write window, including the scalar at `+0x80`).
+- The 22-slot family indexes records with stride `0x108`, and its visible per-index writes span `+0x88` through `+0x180` relative to the array base (a `0xF8` offset span, or `0x100` bytes including the final eight-byte slot and the scalar at `+0x88`).
+- The 53-slot family indexes with stride `0x1B8`, and its visible per-index writes span `+0x80` through `+0x230` (a `0x1B0` offset span, or `0x1B8` bytes including the final eight-byte slot and the scalar at `+0x80`).
 - Both FECS selector-bearing functions use the *nested object* `*( *(param_2+0x160) + 0xF0 )`, and read its **direct function-pointer field** at `+0x168`. They also write fields as far as `+0x4AC` on that same nested object. The FECS object therefore has a substantially different **observed access footprint** from either indexed slot-filler record.
 
 These facts **deprioritize** the bulk slot-fillers as FECS callback producers. The record strides are *not verified allocation sizes*, however, and a common numeric offset is neither an alias proof nor an absolute non-alias proof.
