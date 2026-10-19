@@ -21,6 +21,8 @@ Historical research notes from 17 October 2026 for [phobosq/pascal-xp](https://g
 | FECS +0x168 callback-slot writer aliases and indexed-table false positives | [#126](https://github.com/phobosq/pascal-xp/actions/runs/39080438535) | [Callback-slot writer alias audit](2026-10-19-run126-callback-slot-writer-alias-audit.md) |
 | Independent analysis of a **modified XP probe**, not the original input | Separate local examination | [Probe analysis](2026-10-17-modified-xp-probe.md) |
 
+| XP counterpart search for Win7 slot-owner predicate | #119 / #121 evidence audit | [Bounded counterpart audit](2026-10-19-xp-slot-owner-counterpart-audit.md) |
+
 ## Important chronological corrections
 
 - The #108 note identified Win7 GPU initialization at `FUN_001C8754` but could not find its XP counterpart within a bounded sample. #112 **found** XP `FUN_0009E0C0`; absence was never established.
